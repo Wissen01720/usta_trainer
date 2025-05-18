@@ -1,38 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import MainLayout from '../components/Layout/MainLayout';
 import StudentDashboard from '../components/Dashboard/StudentDashboard';
 import TeacherDashboard from '../components/Dashboard/TeacherDashboard';
 import AdminDashboard from '../components/Dashboard/AdminDashboard';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/useAuth";
 
-type Role = 'student' | 'teacher' | 'admin';
+// Normaliza el rol para que siempre sea uno válido para MainLayout
+const normalizeRole = (
+  role: string | undefined
+): "student" | "teacher" | "admin" | undefined => {
+  if (!role) return undefined;
+  const r = role.toLowerCase();
+  if (r === "student") return "student";
+  if (r === "teacher") return "teacher";
+  if (r === "admin") return "admin";
+  return undefined;
+};
 
 const Dashboard: React.FC = () => {
-  // In a real app with backend, this would come from auth context
-  // For now, we'll get it from localStorage (set in RoleSelector)
-  const [userRole, setUserRole] = useState<Role>('student');
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   useEffect(() => {
-    const savedRole = localStorage.getItem('userRole') as Role | null;
-    
-    if (savedRole) {
-      setUserRole(savedRole);
-      toast({
-        title: `Bienvenido al panel de ${savedRole}`,
-        description: "Has iniciado sesión correctamente",
-        variant: "default",
-      });
-    } else {
-      // If no role is saved, redirect to role selection
-      navigate('/select-role');
+    if (!loading) {
+      if (!user) {
+        // Si no hay usuario autenticado, redirige al login
+        navigate('/login');
+      } else {
+        toast({
+          title: `Bienvenido al panel de ${user.role}`,
+          description: "Has iniciado sesión correctamente",
+          variant: "default",
+        });
+      }
     }
-  }, [navigate, toast]);
-  
+  }, [user, loading, navigate, toast]);
+
   const renderDashboard = () => {
-    switch (userRole) {
+    switch (normalizeRole(user?.role)) {
       case 'student':
         return <StudentDashboard />;
       case 'teacher':
@@ -40,12 +48,16 @@ const Dashboard: React.FC = () => {
       case 'admin':
         return <AdminDashboard />;
       default:
-        return <StudentDashboard />;
+        return null;
     }
   };
-  
+
+  if (loading) {
+    return <div className="text-center py-10 text-white">Cargando...</div>;
+  }
+
   return (
-    <MainLayout role={userRole}>
+    <MainLayout role={normalizeRole(user?.role) || 'student'}>
       {renderDashboard()}
     </MainLayout>
   );

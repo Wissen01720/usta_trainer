@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { 
@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { useAuth } from '../../hooks/useAuth';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -41,9 +42,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Check if dark mode was set in localStorage
     const darkModeStored = localStorage.getItem('darkMode');
     if (darkModeStored === 'true') {
       setIsDarkMode(true);
@@ -55,7 +56,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
     setIsDarkMode(!isDarkMode);
     document.documentElement.classList.toggle('dark');
     localStorage.setItem('darkMode', (!isDarkMode).toString());
-    
     toast({
       title: isDarkMode ? "Modo claro activado" : "Modo oscuro activado",
       description: isDarkMode 
@@ -65,7 +65,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
   };
 
   const handleLogout = () => {
-    // In a real app, this would handle auth logout
     localStorage.removeItem('userRole');
     toast({
       title: "Sesión cerrada",
@@ -116,7 +115,49 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
     }
   };
 
-  // Animations
+  const getInitials = () => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
+    }
+    if (user?.name) {
+      const parts = user.name.trim().split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return parts[0][0].toUpperCase();
+    }
+    return 'U';
+  };
+
+  const getFullName = () => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name} ${user.last_name}`;
+    }
+    if (user?.name) return user.name;
+    return role === 'teacher'
+      ? 'Prof. Carlos López'
+      : role === 'admin'
+      ? 'Admin Sistema'
+      : 'Estudiante';
+  };
+
+  const getUserGreeting = () => {
+    const hour = new Date().getHours();
+    let greeting = '';
+    if (hour < 12) greeting = 'Buenos días';
+    else if (hour < 18) greeting = 'Buenas tardes';
+    else greeting = 'Buenas noches';
+    const name =
+      (user?.first_name && user?.first_name) ? user.first_name :
+      user?.name ||
+      (role === 'teacher'
+        ? 'Profesor'
+        : role === 'admin'
+        ? 'Admin'
+        : 'Estudiante');
+    return `${greeting}, ${name}`;
+  };
+
   const sidebarAnimation = {
     hidden: { x: -250 },
     visible: {
@@ -137,23 +178,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
     }
   };
 
-  const getInitials = () => {
-    const name = role.charAt(0).toUpperCase() + role.slice(1);
-    return name.charAt(0);
-  };
+  // Función optimizada para navegación
+  const handleNavigation = useCallback((path: string) => {
+    setIsMobileMenuOpen(false);
+    if (location.pathname !== path) {
+      navigate(path);
+    }
+  }, [location.pathname, navigate]);
 
-  const getUserGreeting = () => {
-    const hour = new Date().getHours();
-    let greeting = "";
-    
-    if (hour < 12) greeting = "Buenos días";
-    else if (hour < 18) greeting = "Buenas tardes";
-    else greeting = "Buenas noches";
-    
-    const name = role === 'student' ? 'Ana' : role === 'teacher' ? 'Prof. Carlos' : 'Admin';
-    
-    return `${greeting}, ${name}`;
-  };
+  // Función para navegación desde dropdown (no cierra menú móvil)
+  const handleDropdownNavigation = useCallback((path: string) => {
+    if (location.pathname !== path) {
+      navigate(path);
+    }
+  }, [location.pathname, navigate]);
 
   return (
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'dark' : ''}`}>
@@ -245,7 +283,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${role}`} alt={role} />
+                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${getFullName()}`} alt={getFullName()} />
                     <AvatarFallback className={`bg-gradient-to-br ${roleColor[role].gradient}`}>
                       {getInitials()}
                     </AvatarFallback>
@@ -256,7 +294,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className={`p-1 rounded-full bg-gradient-to-br ${roleColor[role].gradient} flex items-center justify-center`}>
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${role}`} alt={role} />
+                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${getFullName()}`} alt={getFullName()} />
                       <AvatarFallback className={`bg-gradient-to-br ${roleColor[role].gradient}`}>
                         {getInitials()}
                       </AvatarFallback>
@@ -264,17 +302,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                   </div>
                   <div>
                     <p className="text-sm font-medium">
-                      {role === 'student' ? 'Ana Martínez' : role === 'teacher' ? 'Prof. Carlos López' : 'Admin Sistema'}
+                      {getFullName()}
                     </p>
-                    <p className="text-xs text-muted-foreground">{role}..example.com</p>
+                    <p className="text-xs text-muted-foreground">{role}</p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => navigate('/dashboard')}>
+                <DropdownMenuItem
+                  onSelect={() => handleDropdownNavigation('/dashboard')}
+                >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   <span>Dashboard</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate('/settings')}>
+                <DropdownMenuItem
+                  onSelect={() => handleDropdownNavigation('/settings')}
+                >
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Ajustes</span>
                 </DropdownMenuItem>
@@ -318,14 +360,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
             <div className={`p-3 rounded-lg mb-6 bg-slate-100 dark:bg-slate-800 border ${roleColor[role].border}`}>
               <div className="flex items-center space-x-3">
                 <Avatar>
-                  <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${role}`} alt={role} />
+                  <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${getFullName()}`} alt={getFullName()} />
                   <AvatarFallback className={`bg-gradient-to-br ${roleColor[role].gradient}`}>
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">
-                    {role === 'student' ? 'Ana Martínez' : role === 'teacher' ? 'Prof. Carlos López' : 'Admin Sistema'}
+                    {getFullName()}
                   </p>
                   <p className={`text-xs ${roleColor[role].text}`}>{role}</p>
                 </div>
@@ -346,7 +388,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                         ? `bg-gradient-to-r ${roleColor[role].gradient} text-white`
                         : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => handleNavigation(item.path)}
                   >
                     {item.icon}
                     <span>{item.name}</span>
@@ -378,14 +420,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
               <div className={`p-4 rounded-lg bg-slate-100 dark:bg-slate-800 border ${roleColor[role].border}`}>
                 <div className="flex items-center space-x-3 mb-3">
                   <Avatar>
-                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${role}`} alt={role} />
+                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${getFullName()}`} alt={getFullName()} />
                     <AvatarFallback className={`bg-gradient-to-br ${roleColor[role].gradient}`}>
                       {getInitials()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">
-                      {role === 'student' ? 'Ana Martínez' : role === 'teacher' ? 'Prof. Carlos López' : 'Admin Sistema'}
+                      {getFullName()}
                     </p>
                     <p className={`text-xs ${roleColor[role].text} capitalize`}>{role}</p>
                   </div>
@@ -400,22 +442,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                   whileHover="hover"
                   variants={navItemAnimation}
                 >
-                  <Link
-                    to={item.path}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md ${
+                  <button
+                    type="button"
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md w-full text-left ${
                       location.pathname === item.path
                         ? `bg-gradient-to-r ${roleColor[role].gradient} text-white`
                         : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
+                    onClick={() => handleNavigation(item.path)}
                   >
                     {item.icon}
                     <span>{item.name}</span>
-                    
-                    {/* Show badge only for the dashboard item when there are notifications */}
                     {item.name === "Dashboard" && showNotificationBadge && (
                       <Badge className="ml-auto bg-red-500 text-xs h-5 min-w-5 flex items-center justify-center p-0">2</Badge>
                     )}
-                  </Link>
+                  </button>
                 </motion.div>
               ))}
             </nav>

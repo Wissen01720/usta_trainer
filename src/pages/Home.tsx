@@ -96,7 +96,7 @@ const Home = () => {
               className="flex flex-col md:flex-row justify-center gap-4"
             >
               <Link
-                to="/challenges"
+                to="/"
                 className="px-8 py-3 bg-[#F472B6] hover:bg-[#E262A6] rounded-lg text-white font-medium shadow-lg transition transform hover:scale-105 flex items-center justify-center"
               >
                 Explorar desafíos <ChevronRight className="ml-2 h-5 w-5" />

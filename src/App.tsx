@@ -6,11 +6,16 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-import CodeLab from "./pages/CodeLab";
-import Lessons from "./pages/Lessons";
-import Settings from "./pages/Settings";
+// Importa los componentes específicos de estudiantes
+import LessonsStudents from "./components/Dashboard/Students/LessonsStudents";
+import SettingsStudents from "./components/Dashboard/Students/SettingsStudents";
+import CodeLabStudents from "./components/Dashboard/Students/CodelabStudents";
 import LoginForm from "./components/Auth/LoginForm";
 import RegisterForm from "./components/Auth/RegisterForm";
+// Dashboard components
+import AdminDashboard from "./components/Dashboard/AdminDashboard";
+import StudentDashboard from "./components/Dashboard/StudentDashboard";
+import TeacherDashboard from "./components/Dashboard/TeacherDashboard";
 // Import monaco-editor styles
 import 'monaco-editor/esm/vs/editor/editor.all.js';
 
@@ -26,11 +31,17 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/select-role" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/codelab" element={<CodeLab />} />
-          <Route path="/lessons" element={<Lessons />} />
-          <Route path="/settings" element={<Settings />} />
+          {/* Rutas específicas para estudiantes */}
+          <Route path="/codelab" element={<CodeLabStudents />} />
+          <Route path="/lessons" element={<LessonsStudents />} />
+          <Route path="/settings" element={<SettingsStudents />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/register" element={<RegisterForm />} />
+
+          {/* Dashboard routes */}
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/student-dashboard" element={<StudentDashboard />} />
+          <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         </Routes>

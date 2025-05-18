@@ -1,9 +1,8 @@
-// filepath: c:\Users\Edgar\OneDrive\Documentos\usta_trainer\tailwind.config.ts
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
 
-export default {
-  darkMode: "class" as const,
+const config: Config = {
+  darkMode: "class",
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -49,5 +48,7 @@ export default {
       },
     },
   },
-  plugins: [animate], // No necesitas agregar el plugin de filtros explícitamente, ya está incluido por defecto
-} satisfies Config;
+  plugins: [animate],
+};
+
+export default config;

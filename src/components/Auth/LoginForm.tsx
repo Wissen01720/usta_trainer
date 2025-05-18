@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Importa useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Mail, Eye, EyeOff, ChevronRight, Code } from 'lucide-react';
+import axios from 'axios';
+import { authService } from '../../api/authService';
+import { ROLES } from '../../api/config';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -9,38 +12,72 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); // Estado para manejar errores
-  const navigate = useNavigate(); // Hook para redirigir
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  // Usuarios quemados
-  const users = [
-    { email: 'user1@universidad.edu', password: 'password123', role : 'student' },
-    { email: 'user2@universidad.edu', password: 'password456', role : 'student' },
-    { email: 'juliana@usantoto.edu.co', password: '12345', role : 'admin' },
-    { email: 'edgard@usantoto.edu.co', password: '12345', role: 'admin' },
-    { email: 'inge@usantoto.edu.co', password: '12345', role : 'teacher' },
-  ];
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!email || !password) {
+      setError('Por favor completa todos los campos');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
-  
-    // Simulación de autenticación
-    setTimeout(() => {
-      const user = users.find((u) => u.email === email && u.password === password);
-      if (user) {
-        if (user.role === 'student') {
-          navigate('/codelab'); // Redirige al CodeLab si es estudiante
-        } else if (user.role === 'admin') {
-          navigate('/dashboard'); // Redirige al Dashboard si es administrador
-        }
+
+    try {
+      // Solo recibes el usuario, el token ya se guarda en authService
+      const user = await authService.login({ email, password });
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
       } else {
-        setError('Credenciales inválidas. Por favor, inténtalo de nuevo.');
+        localStorage.removeItem('rememberedEmail');
       }
+
+      // Redirigir según el rol del usuario
+      switch (user.role) {
+        case ROLES.STUDENT:
+          navigate('/student-dashboard');
+          break;
+        case ROLES.ADMIN:
+          navigate('/admin-dashboard');
+          break;
+        case ROLES.TEACHER:
+          navigate('/teacher-dashboard');
+          break;
+        default:
+          navigate('/');
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const backendMsg = err.response?.data?.message?.toLowerCase() || '';
+        if (backendMsg.includes('correo') || backendMsg.includes('email')) {
+          setError('El correo ingresado no es válido o no está registrado.');
+        } else if (backendMsg.includes('contraseña') || backendMsg.includes('password')) {
+          setError('La contraseña es incorrecta.');
+        } else {
+          setError('Error al iniciar sesión. Verifica tus credenciales.');
+        }
+      } else if (err instanceof Error) {
+        setError(err.message || 'Ocurrió un error inesperado.');
+      } else {
+        setError('Ocurrió un error inesperado.');
+      }
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
+
+  // Cargar email recordado si existe
+  React.useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#2E3A4D] via-[#3E4A5D] to-[#1E2A3D] overflow-hidden relative">
@@ -113,8 +150,11 @@ const LoginForm = () => {
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {error && (
-              <div className="text-red-500 text-sm text-center">{error}</div>
+              <div className="bg-red-500/20 border border-red-500/50 text-red-500 text-sm p-3 rounded-lg text-center">
+                {error}
+              </div>
             )}
+            
             <motion.div
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -136,6 +176,7 @@ const LoginForm = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-[#A78BFA] focus:border-transparent"
                   placeholder="tu.correo@universidad.edu"
+                  autoComplete="username"
                 />
               </div>
             </motion.div>
@@ -161,11 +202,13 @@ const LoginForm = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-[#A78BFA] focus:border-transparent"
                   placeholder="••••••••"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-white/70 hover:text-white" />
@@ -215,7 +258,7 @@ const LoginForm = () => {
                 type="submit"
                 disabled={isLoading}
                 className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#A78BFA] transition-all ${
-                  isLoading ? 'bg-[#A78BFA]/70' : 'bg-[#A78BFA] hover:bg-[#9061F9] hover:shadow-lg'
+                  isLoading ? 'bg-[#A78BFA]/70 cursor-not-allowed' : 'bg-[#A78BFA] hover:bg-[#9061F9] hover:shadow-lg'
                 }`}
               >
                 {isLoading ? (

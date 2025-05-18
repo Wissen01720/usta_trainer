@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import MainLayout from '../components/Layout/MainLayout';
-import Editor from '../components/CodeEditor/Editor';
-import AnimationPreview from '../components/CodeEditor/AnimationPreview';
-import { useToast } from '../hooks/use-toast';
-import { Button } from '../components/ui/button';
+import MainLayout from '../../Layout/MainLayout';
+import Editor from '../../CodeEditor/Editor';
+import { useToast } from '../../../hooks/use-toast';
+import { Button } from '../../ui/button';
 import { Play, Save, Copy, Download, CheckCircle, BookOpen } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
 interface Exercise {
   id: string;
@@ -19,6 +18,23 @@ interface Exercise {
     expectedOutput: string;
   }>;
 }
+
+// Judge0 language IDs: https://ce.judge0.com/languages
+const JUDGE0_LANGUAGES: Record<string, number> = {
+  javascript: 63,
+  python: 71,
+  java: 62,
+  c: 50,
+  cpp: 54,
+  csharp: 51,
+  php: 68,
+  go: 60,
+  ruby: 72,
+  swift: 83,
+  kotlin: 78,
+  typescript: 74,
+  rust: 73,
+};
 
 const SUPPORTED_LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' },
@@ -58,13 +74,12 @@ const CodeLab: React.FC = () => {
     message: string;
     details?: any;
   } | null>(null);
+  const [output, setOutput] = useState<string>('');
   const { toast } = useToast();
 
-  // Cargar ejercicios desde una API (simulado)
   useEffect(() => {
     const fetchExercises = async () => {
       try {
-        // En una implementación real, esto vendría de una API
         const demoExercises: Exercise[] = [
           {
             id: 'ex1',
@@ -87,23 +102,20 @@ const CodeLab: React.FC = () => {
             language: 'python',
             testCases: [
               {
-                input: '1, 2',
+                input: '1 2',
                 expectedOutput: '3'
               }
             ]
           }
         ];
-        
         setExercises([DEFAULT_EXERCISE, ...demoExercises]);
       } catch (err) {
         console.error('Error cargando ejercicios:', err);
       }
     };
-
     fetchExercises();
   }, []);
 
-  // Cargar código guardado al iniciar
   useEffect(() => {
     const savedCode = localStorage.getItem('savedCode');
     const savedLanguage = localStorage.getItem('savedLanguage');
@@ -115,79 +127,55 @@ const CodeLab: React.FC = () => {
     setCode(newCode);
     setError(null);
     setGradeResult(null);
+    setOutput('');
     localStorage.setItem('savedCode', newCode);
   };
 
-  const handleRunCode = () => {
+  // Ejecutar código usando Judge0
+  const handleRunCode = async () => {
+    setOutput('');
+    setError(null);
     if (!code.trim()) {
       setError('El código no puede estar vacío.');
       return;
     }
-
     setIsRunning(true);
-    setTimeout(() => {
+
+    const languageId = JUDGE0_LANGUAGES[language];
+    if (!languageId) {
+      setError('Lenguaje no soportado.');
       setIsRunning(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://ce.judge0.com/submissions?base64_encoded=false&wait=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_code: code,
+          language_id: languageId,
+          stdin: '', // Puedes agregar entrada estándar si lo deseas
+        }),
+      });
+      const result = await response.json();
+      if (result.stderr) {
+        setOutput(result.stderr);
+      } else if (result.compile_output) {
+        setOutput(result.compile_output);
+      } else {
+        setOutput(result.stdout || '');
+      }
       toast({
         title: "Ejecución completada",
-        description: "El código se ha ejecutado en el panel de visualización.",
+        description: "El código se ejecutó correctamente.",
         variant: "default",
       });
-    }, 500);
-  };
-
-  const handleGradeCode = async () => {
-    if (!code.trim()) {
-      setError('El código no puede estar vacío.');
-      return;
+    } catch (err: any) {
+      setError('Error al ejecutar el código: ' + err.message);
+      setOutput('');
     }
-
-    if (!currentExercise || currentExercise.id === 'default') {
-      setError('Selecciona un ejercicio para calificar.');
-      return;
-    }
-
-    setIsGrading(true);
-    setGradeResult(null);
-    
-    try {
-      // Simulación de conexión con juez virtual
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Evaluación básica simulada
-      let passed = false;
-      let message = '';
-      
-      if (currentExercise.id === 'ex1') {
-        passed = code.includes('Hola, mundo!');
-        message = passed 
-          ? '¡Correcto! Has completado el ejercicio.' 
-          : 'El resultado no coincide. Revisa el código.';
-      } else if (currentExercise.id === 'ex2') {
-        passed = code.includes('return a + b') || code.includes('a + b') || code.includes('a+b');
-        message = passed
-          ? '¡Excelente! La función suma correctamente.'
-          : 'La función no retorna la suma correcta.';
-      }
-      
-      setGradeResult({
-        passed,
-        message,
-        details: {
-          testCases: currentExercise.testCases?.length || 0,
-          passedTestCases: passed ? currentExercise.testCases?.length || 0 : 0
-        }
-      });
-      
-      toast({
-        title: passed ? "¡Éxito!" : "Error",
-        description: message,
-        variant: passed ? "default" : "destructive",
-      });
-    } catch (err) {
-      setError('Error al calificar: ' + (err as Error).message);
-    } finally {
-      setIsGrading(false);
-    }
+    setIsRunning(false);
   };
 
   const handleSaveCode = () => {
@@ -206,6 +194,7 @@ const CodeLab: React.FC = () => {
     setLanguage(exercise.language);
     setGradeResult(null);
     setError(null);
+    setOutput('');
   };
 
   return (
@@ -238,7 +227,6 @@ const CodeLab: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            
             <select
               value={theme}
               onChange={(e) => setTheme(e.target.value)}
@@ -272,7 +260,6 @@ const CodeLab: React.FC = () => {
                   </Button>
                 </div>
               </div>
-              
               <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">
                 <Editor
                   language={language}
@@ -282,13 +269,11 @@ const CodeLab: React.FC = () => {
                   height="100%"
                 />
               </div>
-              
               {error && (
                 <div className="mt-2 text-red-500 text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded">
                   {error}
                 </div>
               )}
-              
               {gradeResult && (
                 <div className={`mt-2 p-3 rounded-lg ${
                   gradeResult.passed 
@@ -310,7 +295,6 @@ const CodeLab: React.FC = () => {
                   </div>
                 </div>
               )}
-              
               <div className="flex flex-wrap gap-2 mt-4">
                 <Button 
                   onClick={handleRunCode} 
@@ -320,17 +304,6 @@ const CodeLab: React.FC = () => {
                   <Play className="h-4 w-4 mr-2" />
                   {isRunning ? 'Ejecutando...' : 'Ejecutar'}
                 </Button>
-                
-                <Button 
-                  onClick={handleGradeCode} 
-                  disabled={isGrading || !currentExercise || currentExercise.id === 'default'}
-                  variant="secondary"
-                  className="flex-1 sm:flex-none"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {isGrading ? 'Calificando...' : 'Calificar'}
-                </Button>
-                
                 <Button 
                   onClick={handleSaveCode}
                   variant="outline"
@@ -341,16 +314,17 @@ const CodeLab: React.FC = () => {
                 </Button>
               </div>
             </div>
-            
             {/* Preview */}
             <div className="flex flex-col h-full">
               <h3 className="font-medium mb-2">Resultado</h3>
-              <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">
-                <AnimationPreview code={code} language={language} />
+              <div className="flex-1 min-h-0 border rounded-lg overflow-hidden p-4 bg-black text-white font-mono text-sm">
+                {output
+                  ? <pre>{output}</pre>
+                  : <span className="text-muted-foreground">Ejecuta tu código para ver el resultado aquí.</span>
+                }
               </div>
             </div>
           </div>
-          
           {/* Ejercicios */}
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
@@ -360,13 +334,15 @@ const CodeLab: React.FC = () => {
                   <Download className="h-4 w-4 mr-2" />
                   Descargar código
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => {
+                  navigator.clipboard.writeText(code);
+                  toast({ title: "Código copiado", description: "El código se copió al portapapeles." });
+                }}>
                   <Copy className="h-4 w-4 mr-2" />
                   Copiar código
                 </Button>
               </div>
             </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto max-h-60">
               {exercises.map((exercise) => (
                 <div 

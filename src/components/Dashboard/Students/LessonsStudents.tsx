@@ -1,27 +1,86 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import MainLayout from '../components/Layout/MainLayout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Progress } from "../components/ui/progress";
-import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
+import MainLayout from '../../Layout/MainLayout';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { Progress } from "../../ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Search, BookOpen, Star, ArrowRight, Clock, Play, Award } from "lucide-react";
-import { useToast } from "../hooks/use-toast";
-import LessonModal from '../components/Lessons/LessonModal';
-import { LessonType } from '../types/lesson';
+import { useToast } from "../../../hooks/use-toast";
+import LessonModal from '../../Lessons/LessonModal';
+import { LessonType } from '../../../types/lesson';
+import { API_BASE_URL, API_ENDPOINTS } from '../../../api/config';
 
 const Lessons: React.FC = () => {
-  // Animation states
   const [showContent, setShowContent] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<LessonType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
-  
-  // Get user role from localStorage
   const [userRole] = useState<string>(localStorage.getItem('userRole') || 'student');
 
-  // Role-specific colors
+  // Estado para lecciones y carga
+  const [lessons, setLessons] = useState<LessonType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Puedes definir tus categorías o extraerlas de las lecciones
+  const categories = ["Fundamentos", "JavaScript", "Python", "C++", "Animaciones"];
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${API_BASE_URL}${API_ENDPOINTS.LESSONS.BASE}`)
+      .then(res => res.json())
+      .then(data => {
+        setLessons(data); // Asegúrate que tu backend devuelva un array de lecciones
+        setLoading(false);
+        setShowContent(true);
+      })
+      .catch(() => {
+        toast({ title: "Error", description: "No se pudieron cargar las lecciones", variant: "destructive" });
+        setLoading(false);
+      });
+  }, [toast]);
+
+  const [activeCategory, setActiveCategory] = useState("Todos");
+  const filteredLessons = activeCategory === "Todos"
+    ? lessons
+    : lessons.filter(lesson => lesson.category === activeCategory);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchedLessons = filteredLessons.filter(
+    lesson => lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lesson.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const overallProgress = lessons.length
+    ? Math.round(
+        (lessons.reduce((total, lesson) => total + (lesson.progress || 0), 0) / (lessons.length * 100)) * 100
+      )
+    : 0;
+
+  const completedLessons = lessons.filter(lesson => lesson.completed).length;
+
+  const handleLessonClick = (lesson: LessonType) => {
+    setSelectedLesson(lesson);
+    setIsModalOpen(true);
+  };
+
+  const handleStartLesson = () => {
+    if (!selectedLesson) return;
+    setIsModalOpen(false);
+    if (selectedLesson.progress < 100) {
+      const updatedProgress = Math.min(selectedLesson.progress + 20, 100);
+      const updatedLesson = { ...selectedLesson, progress: updatedProgress };
+      setSelectedLesson(updatedLesson);
+      toast({
+        title: `Lección ${updatedProgress === 100 ? 'completada' : 'actualizada'}`,
+        description: updatedProgress === 100
+          ? "¡Felicitaciones! Has completado esta lección."
+          : `Tu progreso ha sido actualizado al ${updatedProgress}%`,
+      });
+    }
+  };
+
   const roleColors = {
     student: {
       primary: 'from-blue-500 to-indigo-600',
@@ -39,145 +98,12 @@ const Lessons: React.FC = () => {
       accent: 'text-purple-500'
     }
   };
-  
-  // Sample data - would come from API in real app
-  const categories = ["Fundamentos", "JavaScript", "Python", "C++", "Animaciones"];
-  
-  const lessons = [
-    {
-      id: "1",
-      title: "Introducción a la Programación",
-      description: "Aprende los fundamentos básicos de la programación",
-      category: "Fundamentos",
-      level: "Principiante",
-      duration: "2 horas",
-      progress: 100,
-      completed: true,
-      imageUrl: "url-to-image"
-    },
-    {
-      id: "2",
-      title: "Variables y Operadores",
-      description: "Manipulación de datos y operaciones básicas",
-      category: "Fundamentos",
-      level: "Principiante",
-      duration: "1.5 horas",
-      progress: 75,
-      completed: false,
-      imageUrl: "url-to-image"
-    },
-    {
-      id: "3",
-      title: "Estructuras de Control",
-      description: "Aprende a controlar el flujo de tu programa",
-      category: "Fundamentos",
-      level: "Principiante",
-      duration: "2.5 horas",
-      progress: 30,
-      completed: false,
-      imageUrl: "url-to-image"
-    },
-    {
-      id: "4",
-      title: "Funciones en JavaScript",
-      description: "Crea y utiliza funciones para organizar tu código",
-      category: "JavaScript",
-      level: "Intermedio",
-      duration: "3 horas",
-      progress: 0,
-      completed: false,
-      imageUrl: "url-to-image"
-    },
-    {
-      id: "5",
-      title: "Animaciones con CSS y JS",
-      description: "Crea animaciones interactivas para tus aplicaciones",
-      category: "Animaciones",
-      level: "Intermedio",
-      duration: "4 horas",
-      progress: 20,
-      completed: false,
-      imageUrl: "url-to-image"
-    },
-    {
-      id: "6",
-      title: "Python para Ciencia de Datos",
-      description: "Utiliza Python para análisis de datos",
-      category: "Python",
-      level: "Avanzado",
-      duration: "5 horas",
-      progress: 0,
-      completed: false,
-      imageUrl: "url-to-image"
-    }
-  ];
-
-  // Initial animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowContent(true);
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Get lessons for the active category
-  const [activeCategory, setActiveCategory] = useState("Todos");
-  const filteredLessons = activeCategory === "Todos" 
-    ? lessons 
-    : lessons.filter(lesson => lesson.category === activeCategory);
-  
-  // For search functionality
-  const [searchTerm, setSearchTerm] = useState("");
-  const searchedLessons = filteredLessons.filter(
-    lesson => lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-             lesson.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Calculate overall progress
-  const overallProgress = Math.round(
-    (lessons.reduce((total, lesson) => total + lesson.progress, 0) / (lessons.length * 100)) * 100
-  );
-  
-  // Count completed lessons
-  const completedLessons = lessons.filter(lesson => lesson.completed).length;
-  
-  // Handle lesson click
-  const handleLessonClick = (lesson: LessonType) => {
-    setSelectedLesson(lesson);
-    setIsModalOpen(true);
-  };
-  
-  // Handle starting a lesson
-  const handleStartLesson = () => {
-    if (!selectedLesson) return;
-    
-    setIsModalOpen(false);
-    
-    // In a real app, this would navigate to the lesson content
-    // For now, just update the progress for demo purposes
-    if (selectedLesson.progress < 100) {
-      const updatedProgress = Math.min(selectedLesson.progress + 20, 100);
-      // Update the selected lesson
-      const updatedLesson = { ...selectedLesson, progress: updatedProgress };
-      setSelectedLesson(updatedLesson);
-      
-      toast({
-        title: `Lección ${updatedProgress === 100 ? 'completada' : 'actualizada'}`,
-        description: updatedProgress === 100 
-          ? "¡Felicitaciones! Has completado esta lección."
-          : `Tu progreso ha sido actualizado al ${updatedProgress}%`,
-      });
-    }
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+      transition: { staggerChildren: 0.1 }
     }
   };
 
@@ -207,7 +133,6 @@ const Lessons: React.FC = () => {
               <p className="text-muted-foreground">Explora y avanza en tu aprendizaje</p>
             </div>
           </div>
-          
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input 
@@ -236,59 +161,68 @@ const Lessons: React.FC = () => {
           </Tabs>
         </motion.div>
 
+        {/* Estado de carga */}
+        {loading && (
+          <div className="flex justify-center items-center py-10">
+            <span className="text-muted-foreground">Cargando lecciones...</span>
+          </div>
+        )}
+
         {/* Progress Overview Card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-        >
-          <Card className="glass-card bg-gradient-to-r from-slate-900/50 via-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10">
-            <CardHeader>
-              <CardTitle className="text-white">Tu Progreso</CardTitle>
-              <CardDescription className="text-slate-300">Continúa donde lo dejaste</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="w-full sm:w-2/3">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-300">Progreso General</span>
-                    <span className="text-sm font-medium text-slate-300">{overallProgress}%</span>
+        {!loading && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            <Card className="glass-card bg-gradient-to-r from-slate-900/50 via-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white">Tu Progreso</CardTitle>
+                <CardDescription className="text-slate-300">Continúa donde lo dejaste</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="w-full sm:w-2/3">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-slate-300">Progreso General</span>
+                      <span className="text-sm font-medium text-slate-300">{overallProgress}%</span>
+                    </div>
+                    <Progress value={overallProgress} className="h-2" />
+                    <div className="flex gap-2 mt-4 flex-wrap">
+                      <Badge variant="outline" className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30">
+                        {completedLessons} {completedLessons === 1 ? 'Lección Completada' : 'Lecciones Completadas'}
+                      </Badge>
+                      <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                        <Award className="h-3 w-3 mr-1" /> 3 Certificaciones
+                      </Badge>
+                      <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                        <Star className="h-3 w-3 mr-1" /> 12 Habilidades
+                      </Badge>
+                    </div>
                   </div>
-                  <Progress value={overallProgress} className="h-2" />
-                  <div className="flex gap-2 mt-4 flex-wrap">
-                    <Badge variant="outline" className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30">
-                      {completedLessons} {completedLessons === 1 ? 'Lección Completada' : 'Lecciones Completadas'}
-                    </Badge>
-                    <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
-                      <Award className="h-3 w-3 mr-1" /> 3 Certificaciones
-                    </Badge>
-                    <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                      <Star className="h-3 w-3 mr-1" /> 12 Habilidades
-                    </Badge>
+                  <div className="w-full sm:w-1/3 flex justify-end">
+                    <Button 
+                      className={`w-full sm:w-auto bg-gradient-to-r ${roleColors[userRole as keyof typeof roleColors].primary}`}
+                      onClick={() => {
+                        const inProgressLessons = lessons.filter(l => l.progress > 0 && l.progress < 100);
+                        if (inProgressLessons.length > 0) {
+                          const nextLesson = inProgressLessons[0];
+                          setSelectedLesson(nextLesson);
+                          setIsModalOpen(true);
+                        }
+                      }}
+                    >
+                      Continuar Aprendiendo <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="w-full sm:w-1/3 flex justify-end">
-                  <Button 
-                    className={`w-full sm:w-auto bg-gradient-to-r ${roleColors[userRole as keyof typeof roleColors].primary}`}
-                    onClick={() => {
-                      const inProgressLessons = lessons.filter(l => l.progress > 0 && l.progress < 100);
-                      if (inProgressLessons.length > 0) {
-                        const nextLesson = inProgressLessons[0];
-                        setSelectedLesson(nextLesson);
-                        setIsModalOpen(true);
-                      }
-                    }}
-                  >
-                    Continuar Aprendiendo <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Lessons Grid */}
-        {showContent && (
+        {showContent && !loading && (
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -359,7 +293,7 @@ const Lessons: React.FC = () => {
         )}
 
         {/* Empty State */}
-        {showContent && searchedLessons.length === 0 && (
+        {showContent && !loading && searchedLessons.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -377,9 +311,9 @@ const Lessons: React.FC = () => {
             </Button>
           </motion.div>
         )}
-        
+
         {/* Lesson Modal */}
-        <LessonModal 
+        <LessonModal
           lesson={selectedLesson}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
