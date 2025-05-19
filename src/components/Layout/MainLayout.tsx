@@ -1,26 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
-import { 
-  Code, 
-  LayoutDashboard, 
-  BookOpen, 
-  Settings, 
-  LogOut, 
-  Moon, 
+import {
+  Code,
+  LayoutDashboard,
+  BookOpen,
+  Settings,
+  LogOut,
+  Moon,
   Sun,
   Menu,
   X,
   User,
   Home,
   Bell,
-  PlusCircle
+  Badge,
+  FileCheck2,
+  BarChart3,
+  Users as UsersIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../hooks/use-toast';
-import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,8 +60,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
     localStorage.setItem('darkMode', (!isDarkMode).toString());
     toast({
       title: isDarkMode ? "Modo claro activado" : "Modo oscuro activado",
-      description: isDarkMode 
-        ? "Has cambiado a la interfaz en modo claro." 
+      description: isDarkMode
+        ? "Has cambiado a la interfaz en modo claro."
         : "Has cambiado a la interfaz en modo oscuro.",
     });
   };
@@ -81,12 +83,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
     });
   };
 
-  const navItems = [
-    { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
-    { name: "Code Lab", path: "/codelab", icon: <Code className="h-5 w-5" /> },
-    { name: "Lecciones", path: "/lessons", icon: <BookOpen className="h-5 w-5" /> },
-    { name: "Ajustes", path: "/settings", icon: <Settings className="h-5 w-5" /> }
-  ];
+  // Sidebar items by role
+  const navItems =
+    role === 'admin'
+      ? [
+          { name: "Dashboard", path: "/admin-dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: "Lecciones", path: "/admin/lessons", icon: <BookOpen className="h-5 w-5" /> },
+          { name: "Ejercicios", path: "/admin/exercises", icon: <Code className="h-5 w-5" /> },
+          { name: "Logros", path: "/admin/achievements", icon: <Badge className="h-5 w-5" /> },
+          { name: "Notificaciones", path: "/admin/notifications", icon: <Bell className="h-5 w-5" /> },
+          { name: "Logs", path: "/admin/logs", icon: <Settings className="h-5 w-5" /> },
+        ]
+      : role === 'teacher'
+      ? [
+          { name: "Dashboard", path: "/teacher-dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: "Clases", path: "/teacher/classes", icon: <UsersIcon className="h-5 w-5" /> },
+          { name: "Tareas", path: "/teacher/assignments", icon: <FileCheck2 className="h-5 w-5" /> },
+          { name: "Entregas", path: "/teacher/submissions", icon: <BarChart3 className="h-5 w-5" /> },
+          { name: "Ajustes", path: "/settings", icon: <Settings className="h-5 w-5" /> },
+        ]
+      : [
+          { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+          { name: "Code Lab", path: "/codelab", icon: <Code className="h-5 w-5" /> },
+          { name: "Lecciones", path: "/lessons", icon: <BookOpen className="h-5 w-5" /> },
+          { name: "Ajustes", path: "/settings", icon: <Settings className="h-5 w-5" /> }
+        ];
 
   const roleColor = {
     student: {
@@ -172,13 +193,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
 
   const navItemAnimation = {
     rest: { scale: 1 },
-    hover: { 
+    hover: {
       scale: 1.05,
       transition: { type: "spring", stiffness: 400, damping: 17 }
     }
   };
 
-  // Función optimizada para navegación
   const handleNavigation = useCallback((path: string) => {
     setIsMobileMenuOpen(false);
     if (location.pathname !== path) {
@@ -186,7 +206,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
     }
   }, [location.pathname, navigate]);
 
-  // Función para navegación desde dropdown (no cierra menú móvil)
   const handleDropdownNavigation = useCallback((path: string) => {
     if (location.pathname !== path) {
       navigate(path);
@@ -199,10 +218,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
       <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-slate-800 shadow-sm z-20 sticky top-0">
         <div className="container flex items-center justify-between h-16 px-4 md:px-6">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="md:hidden" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -228,10 +247,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
               <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel className="flex justify-between items-center">
                   <span>Notificaciones</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={dismissNotifications} 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={dismissNotifications}
                     className="h-8"
                   >
                     Marcar como leídas
@@ -272,12 +291,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {/* Dark mode toggle */}
             <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </Button>
-            
+
             {/* User dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -309,7 +328,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onSelect={() => handleDropdownNavigation('/dashboard')}
+                  onSelect={() => handleDropdownNavigation(role === 'admin' ? '/admin-dashboard' : role === 'teacher' ? '/teacher-dashboard' : '/dashboard')}
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   <span>Dashboard</span>
@@ -334,7 +353,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden">
-          <motion.div 
+          <motion.div
             className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 p-4 z-50"
             variants={sidebarAnimation}
             initial="hidden"
@@ -347,15 +366,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 </div>
                 <span className="font-bold text-xl">CodeVerse</span>
               </Link>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <X size={20} />
               </Button>
             </div>
-            
+
             {/* User info in mobile menu */}
             <div className={`p-3 rounded-lg mb-6 bg-slate-100 dark:bg-slate-800 border ${roleColor[role].border}`}>
               <div className="flex items-center space-x-3">
@@ -373,7 +392,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 </div>
               </div>
             </div>
-            
+
             <div className="flex flex-col space-y-2">
               {navItems.map((item) => (
                 <motion.div
@@ -396,11 +415,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 </motion.div>
               ))}
             </div>
-            
+
             <div className="absolute bottom-4 left-0 w-full px-4">
-              <Button 
+              <Button
                 onClick={handleLogout}
-                variant="ghost" 
+                variant="ghost"
                 className="w-full flex items-center justify-center space-x-2 text-red-500 hover:bg-red-500/10"
               >
                 <LogOut className="h-4 w-4" />
@@ -460,7 +479,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 </motion.div>
               ))}
             </nav>
-            
+
             {/* Quick actions */}
             <div className="p-4">
               <h3 className="text-sm font-medium mb-3 text-muted-foreground">Acciones rápidas</h3>
@@ -468,12 +487,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
                 <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
                   <Home className="mr-2 h-4 w-4" />
                   <span>Ir a inicio</span>
-                </Button>
-                <Button 
-                  className={`w-full justify-start bg-gradient-to-r ${roleColor[role].gradient} ${roleColor[role].gradientHover} text-white`}
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  <span>Nuevo proyecto</span>
                 </Button>
               </div>
             </div>

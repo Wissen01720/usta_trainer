@@ -7,5 +7,6 @@ export type LessonType = {
     duration: string;
     progress: number;
     completed: boolean;
-    imageUrl: string;
+    video_url: string;
+    content: string;
 };

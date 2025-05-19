@@ -42,11 +42,6 @@ const RegisterForm = () => {
       return;
     }
 
-    if (!formData.email.endsWith('@usantoto.edu.co')) {
-      setError('Por favor usa tu correo institucional (@usantoto.edu.co)');
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -246,7 +241,7 @@ const RegisterForm = () => {
                   value={formData.email}
                   onChange={handleChange}
                   className="pl-10 w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-[#F472B6] focus:border-transparent"
-                  placeholder="tu.correo@usantoto.edu.co"
+                  placeholder="tu.correo@hotmail.com"
                   autoComplete="email"
                 />
               </div>

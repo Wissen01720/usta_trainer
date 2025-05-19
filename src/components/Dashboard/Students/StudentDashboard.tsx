@@ -1,8 +1,10 @@
 import React from 'react';
-import MainLayout from '../Layout/MainLayout';
-import { useAuth } from "../../hooks/useAuth";
+import MainLayout from '../../Layout/MainLayout';
+import { useAuth } from "../../../hooks/useAuth";
+import ActivityHeatmap from './ActivityHeatmap';
 
 interface User {
+  id?: string;
   first_name?: string;
   last_name?: string;
   name?: string;
@@ -42,6 +44,13 @@ const StudentDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+        {/* Heatmap de actividad */}
+        {user?.id && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold mb-2">Tu actividad</h2>
+            <ActivityHeatmap userId={user.id} />
+          </div>
+        )}
         {/* Aquí puedes agregar cards/resúmenes de progreso, logros, etc. */}
       </div>
     </MainLayout>

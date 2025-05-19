@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import { Users, BookOpen, Eye, Plus, BarChart3, FileCheck2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { CreateAssignmentForm } from './CreateAssignmentForm';
-import { ViewClassModal } from './ViewClassModal';
-import { useToast } from "../ui/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { CreateAssignmentForm } from './../CreateAssignmentForm';
+import { ViewClassModal } from './../ViewClassModal';
+import { useToast } from "../../ui/use-toast";
 
 interface ClassType {
   id: number;

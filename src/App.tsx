@@ -6,17 +6,28 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-// Importa los componentes específicos de estudiantes
+// Estudiantes
 import LessonsStudents from "./components/Dashboard/Students/LessonsStudents";
 import SettingsStudents from "./components/Dashboard/Students/SettingsStudents";
 import CodeLabStudents from "./components/Dashboard/Students/CodelabStudents";
+import StudentDashboard from "./components/Dashboard/Students/StudentDashboard";
+// Auth
 import LoginForm from "./components/Auth/LoginForm";
 import RegisterForm from "./components/Auth/RegisterForm";
-// Dashboard components
-import AdminDashboard from "./components/Dashboard/AdminDashboard";
-import StudentDashboard from "./components/Dashboard/StudentDashboard";
-import TeacherDashboard from "./components/Dashboard/TeacherDashboard";
-// Import monaco-editor styles
+// Admin
+import AdminDashboard from "./components/Dashboard/Admin/AdminDashboard";
+import UsersAdmin from "./components/Dashboard/Admin/UsersAdmin";
+import LessonsAdmin from "./components/Dashboard/Admin/LessonsAdmin";
+import ExercisesAdmin from "./components/Dashboard/Admin/ExercisesAdmin";
+import AchievementsAdmin from "./components/Dashboard/Admin/AchievementsAdmin";
+import NotificationsAdmin from "./components/Dashboard/Admin/NotificationsAdmin";
+import SystemLogsAdmin from "./components/Dashboard/Admin/SystemLogsAdmin";
+// Teacher
+import TeacherDashboard from "./components/Dashboard/Teachers/TeacherDashboard";
+import ClassesTeacher from "./components/Dashboard/Teachers/ClassesTeacher";
+import AssignmentsTeacher from "./components/Dashboard/Teachers/AssignmentsTeacher";
+import SubmissionsTeacher from "./components/Dashboard/Teachers/SubmissionsTeacher";
+// Monaco editor styles
 import 'monaco-editor/esm/vs/editor/editor.all.js';
 
 const queryClient = new QueryClient();
@@ -31,19 +42,29 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/select-role" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          {/* Rutas específicas para estudiantes */}
+          {/* Estudiantes */}
           <Route path="/codelab" element={<CodeLabStudents />} />
           <Route path="/lessons" element={<LessonsStudents />} />
           <Route path="/settings" element={<SettingsStudents />} />
+          <Route path="/student-dashboard" element={<StudentDashboard />} />
+          {/* Auth */}
           <Route path="/login" element={<LoginForm />} />
           <Route path="/register" element={<RegisterForm />} />
-
-          {/* Dashboard routes */}
+          {/* Admin */}
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          <Route path="/student-dashboard" element={<StudentDashboard />} />
+          <Route path="/admin/users" element={<UsersAdmin />} />
+          <Route path="/admin/lessons" element={<LessonsAdmin />} />
+          <Route path="/admin/exercises" element={<ExercisesAdmin />} />
+          <Route path="/admin/achievements" element={<AchievementsAdmin />} />
+          <Route path="/admin/notifications" element={<NotificationsAdmin />} />
+          <Route path="/admin/logs" element={<SystemLogsAdmin />} />
+          {/* Teacher */}
           <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/teacher/classes" element={<ClassesTeacher />} />
+          <Route path="/teacher/assignments" element={<AssignmentsTeacher />} />
+          <Route path="/teacher/submissions" element={<SubmissionsTeacher />} />
+          {/* CATCH-ALL */}
+          {/* <Route path="*" element={<NotFound />} /> */}
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
