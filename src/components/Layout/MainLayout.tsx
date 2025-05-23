@@ -90,9 +90,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
           { name: "Dashboard", path: "/admin-dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
           { name: "Lecciones", path: "/admin/lessons", icon: <BookOpen className="h-5 w-5" /> },
           { name: "Ejercicios", path: "/admin/exercises", icon: <Code className="h-5 w-5" /> },
-          { name: "Logros", path: "/admin/achievements", icon: <Badge className="h-5 w-5" /> },
-          { name: "Notificaciones", path: "/admin/notifications", icon: <Bell className="h-5 w-5" /> },
-          { name: "Logs", path: "/admin/logs", icon: <Settings className="h-5 w-5" /> },
         ]
       : role === 'teacher'
       ? [

@@ -13,6 +13,7 @@ import CodeLabStudents from "./components/Dashboard/Students/CodelabStudents";
 import StudentDashboard from "./components/Dashboard/Students/StudentDashboard";
 // Auth
 import LoginForm from "./components/Auth/LoginForm";
+import ForgotPasswordForm from "./components/Auth/ForgotPasswordForm";
 import RegisterForm from "./components/Auth/RegisterForm";
 // Admin
 import AdminDashboard from "./components/Dashboard/Admin/AdminDashboard";
@@ -20,8 +21,6 @@ import UsersAdmin from "./components/Dashboard/Admin/UsersAdmin";
 import LessonsAdmin from "./components/Dashboard/Admin/LessonsAdmin";
 import ExercisesAdmin from "./components/Dashboard/Admin/ExercisesAdmin";
 import AchievementsAdmin from "./components/Dashboard/Admin/AchievementsAdmin";
-import NotificationsAdmin from "./components/Dashboard/Admin/NotificationsAdmin";
-import SystemLogsAdmin from "./components/Dashboard/Admin/SystemLogsAdmin";
 // Teacher
 import TeacherDashboard from "./components/Dashboard/Teachers/TeacherDashboard";
 import ClassesTeacher from "./components/Dashboard/Teachers/ClassesTeacher";
@@ -49,6 +48,7 @@ const App = () => (
           <Route path="/student-dashboard" element={<StudentDashboard />} />
           {/* Auth */}
           <Route path="/login" element={<LoginForm />} />
+          <Route path="/forgot-password" element={<ForgotPasswordForm />} />
           <Route path="/register" element={<RegisterForm />} />
           {/* Admin */}
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
@@ -56,8 +56,6 @@ const App = () => (
           <Route path="/admin/lessons" element={<LessonsAdmin />} />
           <Route path="/admin/exercises" element={<ExercisesAdmin />} />
           <Route path="/admin/achievements" element={<AchievementsAdmin />} />
-          <Route path="/admin/notifications" element={<NotificationsAdmin />} />
-          <Route path="/admin/logs" element={<SystemLogsAdmin />} />
           {/* Teacher */}
           <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
           <Route path="/teacher/classes" element={<ClassesTeacher />} />

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import MainLayout from '../../Layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 
+// Tipos para los prerrequisitos y lecciones
 interface Prerequisite {
   type: 'lesson' | 'exercise';
   id: string;
@@ -28,31 +29,37 @@ interface Lesson {
 
 const API_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:8000';
 
+const initialForm = {
+  title: '',
+  slug: '',
+  content: '',
+  difficulty_level: 'beginner',
+  thumbnail_url: '',
+  video_url: '',
+  estimated_duration: 0,
+  prerequisites: [] as Prerequisite[],
+  is_published: false
+};
+
 const LessonsAdmin: React.FC = () => {
+  // Estados principales
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({
-    title: '',
-    slug: '',
-    content: '',
-    difficulty_level: 'beginner',
-    thumbnail_url: '',
-    video_url: '',
-    estimated_duration: 0,
-    prerequisites: [] as Prerequisite[],
-    is_published: false
-  });
+  const [form, setForm] = useState({ ...initialForm });
 
-  // Estado para detalles/edición
+  // Estados para edición y detalles
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [editForm, setEditForm] = useState<typeof form>(form);
+  const [editForm, setEditForm] = useState<typeof form>(initialForm);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  // Cargar lecciones desde la API
+  const fetchLessons = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch(`${API_URL}/api/v1/lessons/`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
@@ -70,8 +77,13 @@ const LessonsAdmin: React.FC = () => {
         setError(err.message || 'Error al cargar lecciones');
         setLoading(false);
       });
-  }, [showModal, selectedLesson]);
+  }, []);
 
+  useEffect(() => {
+    fetchLessons();
+  }, [fetchLessons, showModal, selectedLesson]);
+
+  // Crear nueva lección
   const handleCreate = async () => {
     setCreating(true);
     try {
@@ -90,24 +102,14 @@ const LessonsAdmin: React.FC = () => {
         return;
       }
       setShowModal(false);
-      setForm({
-        title: '',
-        slug: '',
-        content: '',
-        difficulty_level: 'beginner',
-        thumbnail_url: '',
-        video_url: '',
-        estimated_duration: 0,
-        prerequisites: [],
-        is_published: false
-      });
+      setForm({ ...initialForm });
     } catch {
       alert('Error al crear la lección');
     }
     setCreating(false);
   };
 
-  // Detalles
+  // Mostrar detalles y preparar edición
   const handleShowDetails = (lesson: Lesson) => {
     setSelectedLesson(lesson);
     setEditForm({
@@ -123,7 +125,7 @@ const LessonsAdmin: React.FC = () => {
     });
   };
 
-  // Editar
+  // Guardar cambios de edición
   const handleEdit = async () => {
     if (!selectedLesson) return;
     setEditing(true);
@@ -149,7 +151,7 @@ const LessonsAdmin: React.FC = () => {
     setEditing(false);
   };
 
-  // Eliminar
+  // Eliminar lección
   const handleDelete = async () => {
     if (!selectedLesson) return;
     if (!window.confirm('¿Seguro que deseas eliminar esta lección?')) return;
@@ -174,6 +176,7 @@ const LessonsAdmin: React.FC = () => {
     setDeleting(false);
   };
 
+  // Prerrequisitos para crear
   const handleAddPrerequisite = () => {
     setForm(f => ({
       ...f,
@@ -197,7 +200,7 @@ const LessonsAdmin: React.FC = () => {
     }));
   };
 
-  // Para editar prerrequisitos en el modal de edición
+  // Prerrequisitos para editar
   const handleEditPrerequisiteChange = (idx: number, field: keyof Prerequisite, value: string) => {
     setEditForm(f => ({
       ...f,
@@ -224,6 +227,7 @@ const LessonsAdmin: React.FC = () => {
   return (
     <MainLayout role="admin">
       <div className="space-y-6">
+        {/* Encabezado y botón para agregar */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Lecciones</h1>
           <Button size="sm" variant="outline" onClick={() => setShowModal(true)}>
@@ -235,6 +239,7 @@ const LessonsAdmin: React.FC = () => {
             <CardTitle className="text-gray-900 dark:text-white">Listado de Lecciones</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Estado de carga, error o listado */}
             {loading ? (
               <div className="p-8 text-center text-gray-900 dark:text-white">Cargando lecciones...</div>
             ) : error ? (
@@ -297,6 +302,7 @@ const LessonsAdmin: React.FC = () => {
                           />
                         )}
                       </div>
+                      {/* Prerrequisitos */}
                       {Array.isArray(lesson.prerequisites) && lesson.prerequisites?.length > 0 && (
                         <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                           Prerrequisitos: {lesson.prerequisites!.map((p, idx) =>
@@ -321,6 +327,7 @@ const LessonsAdmin: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg text-gray-900 dark:text-white">
               <h2 className="text-lg font-bold mb-4">Agregar Lección</h2>
               <div className="space-y-2">
+                {/* Campos del formulario de creación */}
                 <input
                   className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
                   value={form.title}
@@ -421,6 +428,7 @@ const LessonsAdmin: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg text-gray-900 dark:text-white">
               <h2 className="text-lg font-bold mb-4">Detalle y Edición de Lección</h2>
               <div className="space-y-2">
+                {/* Campos del formulario de edición */}
                 <input
                   className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
                   value={editForm.title}
@@ -469,7 +477,7 @@ const LessonsAdmin: React.FC = () => {
                   placeholder="Duración estimada (min)"
                   min={0}
                 />
-                {/* Prerrequisitos */}
+                {/* Prerrequisitos edición */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-semibold text-sm">Prerrequisitos</span>
