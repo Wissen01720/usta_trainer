@@ -23,9 +23,8 @@ import ExercisesAdmin from "./components/Dashboard/Admin/ExercisesAdmin";
 import AchievementsAdmin from "./components/Dashboard/Admin/AchievementsAdmin";
 // Teacher
 import TeacherDashboard from "./components/Dashboard/Teachers/TeacherDashboard";
-import ClassesTeacher from "./components/Dashboard/Teachers/ClassesTeacher";
-import AssignmentsTeacher from "./components/Dashboard/Teachers/AssignmentsTeacher";
 import SubmissionsTeacher from "./components/Dashboard/Teachers/SubmissionsTeacher";
+import SettingsTeacher from "./components/Dashboard/Teachers/SettingsTeacher";
 // Monaco editor styles
 import 'monaco-editor/esm/vs/editor/editor.all.js';
 
@@ -58,11 +57,9 @@ const App = () => (
           <Route path="/admin/achievements" element={<AchievementsAdmin />} />
           {/* Teacher */}
           <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-          <Route path="/teacher/classes" element={<ClassesTeacher />} />
-          <Route path="/teacher/assignments" element={<AssignmentsTeacher />} />
           <Route path="/teacher/submissions" element={<SubmissionsTeacher />} />
-          {/* CATCH-ALL */}
-          {/* <Route path="*" element={<NotFound />} /> */}
+          <Route path="/teacher/settings" element={<SettingsTeacher />} />
+
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

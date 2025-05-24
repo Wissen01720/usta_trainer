@@ -15,8 +15,6 @@ import {
   Home,
   Bell,
   Badge,
-  FileCheck2,
-  BarChart3,
   Users as UsersIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -90,14 +88,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
           { name: "Dashboard", path: "/admin-dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
           { name: "Lecciones", path: "/admin/lessons", icon: <BookOpen className="h-5 w-5" /> },
           { name: "Ejercicios", path: "/admin/exercises", icon: <Code className="h-5 w-5" /> },
+          { name: "Ajustes", path: "/admin/settings", icon: <Settings className="h-5 w-5" /> },
         ]
       : role === 'teacher'
       ? [
           { name: "Dashboard", path: "/teacher-dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
           { name: "Clases", path: "/teacher/classes", icon: <UsersIcon className="h-5 w-5" /> },
-          { name: "Tareas", path: "/teacher/assignments", icon: <FileCheck2 className="h-5 w-5" /> },
-          { name: "Entregas", path: "/teacher/submissions", icon: <BarChart3 className="h-5 w-5" /> },
-          { name: "Ajustes", path: "/settings", icon: <Settings className="h-5 w-5" /> },
+          { name: "Ajustes", path: "/teacher/settings", icon: <Settings className="h-5 w-5" /> },
         ]
       : [
           { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
@@ -105,7 +102,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
           { name: "Lecciones", path: "/lessons", icon: <BookOpen className="h-5 w-5" /> },
           { name: "Ajustes", path: "/settings", icon: <Settings className="h-5 w-5" /> }
         ];
-
   const roleColor = {
     student: {
       text: "text-blue-500",

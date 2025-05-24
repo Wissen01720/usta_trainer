@@ -1,213 +1,527 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../ui/card";
+import React, { useEffect, useState, useCallback } from 'react';
+import MainLayout from '../../Layout/MainLayout';
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-import { Users, BookOpen, Eye, Plus, BarChart3, FileCheck2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../ui/dialog";
-import { CreateAssignmentForm } from './../CreateAssignmentForm';
-import { ViewClassModal } from './../ViewClassModal';
+import { Eye, Plus } from 'lucide-react';
 import { useToast } from "../../ui/use-toast";
 
-interface ClassType {
-  id: number;
-  name: string;
-  students: number;
-  avgProgress: number;
-  recentSubmissions: number;
+interface Prerequisite {
+  type: 'lesson' | 'exercise';
+  id: string;
 }
 
-interface AssignmentFormValues {
+interface Lesson {
+  id: string;
   title: string;
-  description: string;
-  dueDate: string;
+  slug: string;
+  content: string;
+  difficulty_level?: string;
+  thumbnail_url?: string;
+  video_url?: string;
+  estimated_duration?: number;
+  prerequisites?: Prerequisite[];
+  author_id: string;
+  is_published: boolean;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
 }
+
+const API_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:8000';
+
+const initialForm = {
+  title: '',
+  slug: '',
+  content: '',
+  difficulty_level: 'beginner',
+  thumbnail_url: '',
+  video_url: '',
+  estimated_duration: 0,
+  prerequisites: [] as Prerequisite[],
+  is_published: false
+};
 
 const TeacherDashboard: React.FC = () => {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
-  const [isViewClassOpen, setIsViewClassOpen] = useState(false);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ ...initialForm });
+
+  // Estados para edición y detalles
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [editForm, setEditForm] = useState<typeof form>(initialForm);
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
-  // Sample data - would come from API in real app
-  const classes = [
-    { 
-      id: 1, 
-      name: "Introduction to Programming - Class A", 
-      students: 24,
-      avgProgress: 65,
-      recentSubmissions: 8
-    },
-    { 
-      id: 2, 
-      name: "JavaScript for Beginners - Class B", 
-      students: 18,
-      avgProgress: 42,
-      recentSubmissions: 5
-    },
-    { 
-      id: 3, 
-      name: "Creative Coding - Class C", 
-      students: 15,
-      avgProgress: 28,
-      recentSubmissions: 3
-    }
-  ];
+  // Cargar lecciones del docente autenticado
+  const fetchLessons = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`${API_URL}/api/teacher/lessons`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Error al cargar lecciones');
+        return res.json();
+      })
+      .then(data => {
+        setLessons(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || 'Error al cargar lecciones');
+        setLoading(false);
+      });
+  }, []);
 
-  const handleCreateAssignment = (values: AssignmentFormValues) => {
-    console.log('New assignment:', values);
-    setIsCreateDialogOpen(false);
-    toast({
-      title: "Tarea creada",
-      description: `La tarea "${values.title}" ha sido creada exitosamente.`,
+  useEffect(() => {
+    fetchLessons();
+  }, [fetchLessons, showModal, selectedLesson]);
+
+  // Crear nueva lección
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const res = await fetch(`${API_URL}/api/teacher/lessons`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+        },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        toast({ title: "Error", description: errorData.detail || 'Error al crear la lección.' });
+        setCreating(false);
+        return;
+      }
+      setShowModal(false);
+      setForm({ ...initialForm });
+      toast({ title: "Lección creada", description: "La lección ha sido creada exitosamente." });
+    } catch {
+      toast({ title: "Error", description: "No se pudo crear la lección." });
+    }
+    setCreating(false);
+  };
+
+  // Mostrar detalles y preparar edición
+  const handleShowDetails = (lesson: Lesson) => {
+    setSelectedLesson(lesson);
+    setEditForm({
+      title: lesson.title,
+      slug: lesson.slug,
+      content: lesson.content,
+      difficulty_level: lesson.difficulty_level || 'beginner',
+      thumbnail_url: lesson.thumbnail_url || '',
+      video_url: lesson.video_url || '',
+      estimated_duration: lesson.estimated_duration || 0,
+      prerequisites: lesson.prerequisites || [],
+      is_published: lesson.is_published
     });
   };
 
-  const handleViewClass = (classData: ClassType) => {
-    setSelectedClass(classData);
-    setIsViewClassOpen(true);
+  // Guardar cambios de edición
+  const handleEdit = async () => {
+    if (!selectedLesson) return;
+    setEditing(true);
+    try {
+      const res = await fetch(`${API_URL}/api/teacher/lessons/${selectedLesson.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+        },
+        body: JSON.stringify(editForm)
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        toast({ title: "Error", description: errorData.detail || 'Error al editar la lección.' });
+        setEditing(false);
+        return;
+      }
+      setSelectedLesson(null);
+      toast({ title: "Lección actualizada", description: "La lección ha sido actualizada." });
+    } catch {
+      toast({ title: "Error", description: "No se pudo editar la lección." });
+    }
+    setEditing(false);
+  };
+
+  // Eliminar lección
+  const handleDelete = async () => {
+    if (!selectedLesson) return;
+    if (!window.confirm('¿Seguro que deseas eliminar esta lección?')) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/teacher/lessons/${selectedLesson.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+        }
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        toast({ title: "Error", description: errorData.detail || 'Error al eliminar la lección.' });
+        setDeleting(false);
+        return;
+      }
+      setSelectedLesson(null);
+      toast({ title: "Lección eliminada", description: "La lección ha sido eliminada." });
+    } catch {
+      toast({ title: "Error", description: "No se pudo eliminar la lección." });
+    }
+    setDeleting(false);
+  };
+
+  // Prerrequisitos para crear
+  const handleAddPrerequisite = () => {
+    setForm(f => ({
+      ...f,
+      prerequisites: [...f.prerequisites, { type: 'lesson', id: '' }]
+    }));
+  };
+
+  const handlePrerequisiteChange = (idx: number, field: keyof Prerequisite, value: string) => {
+    setForm(f => ({
+      ...f,
+      prerequisites: f.prerequisites.map((p, i) =>
+        i === idx ? { ...p, [field]: value } : p
+      )
+    }));
+  };
+
+  const handleRemovePrerequisite = (idx: number) => {
+    setForm(f => ({
+      ...f,
+      prerequisites: f.prerequisites.filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Prerrequisitos para editar
+  const handleEditPrerequisiteChange = (idx: number, field: keyof Prerequisite, value: string) => {
+    setEditForm(f => ({
+      ...f,
+      prerequisites: f.prerequisites.map((p, i) =>
+        i === idx ? { ...p, [field]: value } : p
+      )
+    }));
+  };
+
+  const handleEditAddPrerequisite = () => {
+    setEditForm(f => ({
+      ...f,
+      prerequisites: [...f.prerequisites, { type: 'lesson', id: '' }]
+    }));
+  };
+
+  const handleEditRemovePrerequisite = (idx: number) => {
+    setEditForm(f => ({
+      ...f,
+      prerequisites: f.prerequisites.filter((_, i) => i !== idx)
+    }));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Panel del Profesor</h1>
-          <p className="text-muted-foreground mt-1">Gestiona tus clases y monitorea el progreso de tus estudiantes</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700">
-            <Plus className="h-4 w-4 mr-2" /> Crear Tarea
+    <MainLayout role="teacher">
+      <div className="space-y-6">
+        {/* Encabezado y botón para agregar */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Lecciones</h1>
+          <Button size="sm" variant="outline" onClick={() => setShowModal(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Agregar Lección
           </Button>
         </div>
-      </div>
-
-      {/* Dialog for creating new assignment */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Crear Nueva Tarea</DialogTitle>
-            <DialogDescription>
-              Completa el formulario para crear una nueva tarea para tus estudiantes.
-            </DialogDescription>
-          </DialogHeader>
-          <CreateAssignmentForm 
-            onSubmit={handleCreateAssignment}
-            onCancel={() => setIsCreateDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* View Class Modal */}
-      {selectedClass && (
-        <ViewClassModal
-          isOpen={isViewClassOpen}
-          onClose={() => setIsViewClassOpen(false)}
-          classData={selectedClass}
-        />
-      )}
-      
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border-green-100 dark:border-green-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">Total Estudiantes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Users className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
-                <span className="text-2xl font-bold text-green-800 dark:text-green-300">57</span>
-              </div>
-              <Badge className="bg-green-500">+4 esta semana</Badge>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-100 dark:border-blue-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">Cursos Activos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
-                <span className="text-2xl font-bold text-blue-800 dark:text-blue-300">3</span>
-              </div>
-              <Badge className="bg-blue-500">En progreso</Badge>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50 border-purple-100 dark:border-purple-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800 dark:text-purple-300">Tareas Pendientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <FileCheck2 className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
-                <span className="text-2xl font-bold text-purple-800 dark:text-purple-300">12</span>
-              </div>
-              <Badge className="bg-purple-500">Por revisar</Badge>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 border-amber-100 dark:border-amber-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-amber-800 dark:text-amber-300">Promedio General</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <BarChart3 className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2" />
-                <span className="text-2xl font-bold text-amber-800 dark:text-amber-300">85%</span>
-              </div>
-              <Badge className="bg-amber-500">Excelente</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Classes Section */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Tus Clases</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {classes.map((cls) => (
-            <Card key={cls.id} className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-              <CardHeader>
-                <CardTitle className="text-lg">{cls.name}</CardTitle>
-                <CardDescription>
-                  {cls.students} estudiantes inscritos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Progreso Promedio</span>
-                    <span className="font-medium">{cls.avgProgress}%</span>
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Tus Lecciones</h2>
+          {loading ? (
+            <div className="text-center text-muted-foreground py-8">Cargando lecciones...</div>
+          ) : error ? (
+            <div className="text-red-500 dark:text-red-400">{error}</div>
+          ) : lessons.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">No has subido lecciones aún.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {lessons.map(lesson => (
+                <Card key={lesson.id} className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{lesson.title}</CardTitle>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Badge variant="outline" className={
+                        lesson.is_published
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
+                      }>
+                        {lesson.is_published ? 'Publicado' : 'Borrador'}
+                      </Badge>
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
+                        {lesson.slug}
+                      </span>
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
+                        Dificultad: {lesson.difficulty_level || 'N/A'}
+                      </span>
+                      {lesson.estimated_duration ? (
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          Duración: {lesson.estimated_duration} min
+                        </span>
+                      ) : null}
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
+                        {lesson.created_at?.split('T')[0]}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="line-clamp-2 text-sm text-muted-foreground mb-2">{lesson.content}</div>
+                    {lesson.thumbnail_url && (
+                      <img
+                        src={lesson.thumbnail_url}
+                        alt="thumbnail"
+                        className="w-16 h-16 object-cover rounded mt-2"
+                      />
+                    )}
+                  </CardContent>
+                  <div className="flex gap-2 p-4 pt-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleShowDetails(lesson)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" /> Detalles
+                    </Button>
+                    {lesson.video_url && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <a href={lesson.video_url} target="_blank" rel="noopener noreferrer">
+                          Video
+                        </a>
+                      </Button>
+                    )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Entregas Recientes</span>
-                    <span className="font-medium">{cls.recentSubmissions}</span>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950 dark:hover:text-green-400"
-                  onClick={() => handleViewClass(cls)}
-                >
-                  <Eye className="h-4 w-4 mr-2" /> Ver Clase
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Modal para crear lección */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg text-gray-900 dark:text-white">
+              <h2 className="text-lg font-bold mb-4">Agregar Lección</h2>
+              <div className="space-y-2">
+                {/* Campos del formulario de creación */}
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Título"
+                />
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={form.slug}
+                  onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
+                  placeholder="Slug (único)"
+                />
+                <textarea
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={form.content}
+                  onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                  placeholder="Contenido"
+                  rows={3}
+                />
+                <select
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={form.difficulty_level}
+                  onChange={e => setForm(f => ({ ...f, difficulty_level: e.target.value }))}
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={form.thumbnail_url}
+                  onChange={e => setForm(f => ({ ...f, thumbnail_url: e.target.value }))}
+                  placeholder="URL de la miniatura"
+                />
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={form.video_url}
+                  onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
+                  placeholder="URL del video"
+                />
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  type="number"
+                  value={form.estimated_duration}
+                  onChange={e => setForm(f => ({ ...f, estimated_duration: Number(e.target.value) }))}
+                  placeholder="Duración estimada (min)"
+                  min={0}
+                />
+                {/* Prerrequisitos */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-semibold text-sm">Prerrequisitos</span>
+                    <Button size="sm" onClick={handleAddPrerequisite} type="button">Agregar</Button>
+                  </div>
+                  {form.prerequisites.map((p, idx) => (
+                    <div key={idx} className="flex gap-2 mb-1">
+                      <select
+                        value={p.type}
+                        onChange={e => handlePrerequisiteChange(idx, 'type', e.target.value)}
+                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="lesson">Lección</option>
+                        <option value="exercise">Ejercicio</option>
+                      </select>
+                      <input
+                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                        value={p.id}
+                        onChange={e => handlePrerequisiteChange(idx, 'id', e.target.value)}
+                        placeholder="ID"
+                      />
+                      <Button size="sm" variant="destructive" onClick={() => handleRemovePrerequisite(idx)} type="button">Quitar</Button>
+                    </div>
+                  ))}
+                </div>
+                <label className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={form.is_published}
+                    onChange={e => setForm(f => ({ ...f, is_published: e.target.checked }))}
+                    className="text-gray-900 dark:text-white"
+                  />
+                  Publicar
+                </label>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button size="sm" variant="outline" onClick={() => setShowModal(false)} disabled={creating}>Cancelar</Button>
+                <Button size="sm" onClick={handleCreate} disabled={creating}>
+                  {creating ? "Creando..." : "Crear"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de detalles/edición */}
+        {selectedLesson && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg text-gray-900 dark:text-white">
+              <h2 className="text-lg font-bold mb-4">Detalle y Edición de Lección</h2>
+              <div className="space-y-2">
+                {/* Campos del formulario de edición */}
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={editForm.title}
+                  onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Título"
+                />
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={editForm.slug}
+                  onChange={e => setEditForm(f => ({ ...f, slug: e.target.value }))}
+                  placeholder="Slug (único)"
+                />
+                <textarea
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={editForm.content}
+                  onChange={e => setEditForm(f => ({ ...f, content: e.target.value }))}
+                  placeholder="Contenido"
+                  rows={3}
+                />
+                <select
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={editForm.difficulty_level}
+                  onChange={e => setEditForm(f => ({ ...f, difficulty_level: e.target.value }))}
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={editForm.thumbnail_url}
+                  onChange={e => setEditForm(f => ({ ...f, thumbnail_url: e.target.value }))}
+                  placeholder="URL de la miniatura"
+                />
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  value={editForm.video_url}
+                  onChange={e => setEditForm(f => ({ ...f, video_url: e.target.value }))}
+                  placeholder="URL del video"
+                />
+                <input
+                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                  type="number"
+                  value={editForm.estimated_duration}
+                  onChange={e => setEditForm(f => ({ ...f, estimated_duration: Number(e.target.value) }))}
+                  placeholder="Duración estimada (min)"
+                  min={0}
+                />
+                {/* Prerrequisitos edición */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-semibold text-sm">Prerrequisitos</span>
+                    <Button size="sm" onClick={handleEditAddPrerequisite} type="button">Agregar</Button>
+                  </div>
+                  {editForm.prerequisites.map((p, idx) => (
+                    <div key={idx} className="flex gap-2 mb-1">
+                      <select
+                        value={p.type}
+                        onChange={e => handleEditPrerequisiteChange(idx, 'type', e.target.value)}
+                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="lesson">Lección</option>
+                        <option value="exercise">Ejercicio</option>
+                      </select>
+                      <input
+                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                        value={p.id}
+                        onChange={e => handleEditPrerequisiteChange(idx, 'id', e.target.value)}
+                        placeholder="ID"
+                      />
+                      <Button size="sm" variant="destructive" onClick={() => handleEditRemovePrerequisite(idx)} type="button">Quitar</Button>
+                    </div>
+                  ))}
+                </div>
+                <label className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <input
+                    type="checkbox"
+                    checked={editForm.is_published}
+                    onChange={e => setEditForm(f => ({ ...f, is_published: e.target.checked }))}
+                    className="text-gray-900 dark:text-white"
+                  />
+                  Publicar
+                </label>
+              </div>
+              <div className="flex justify-between gap-2 mt-4">
+                <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? "Eliminando..." : "Eliminar"}
+                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setSelectedLesson(null)} disabled={editing || deleting}>Cerrar</Button>
+                  <Button size="sm" onClick={handleEdit} disabled={editing || deleting}>
+                    {editing ? "Guardando..." : "Guardar Cambios"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </MainLayout>
   );
 };
 
