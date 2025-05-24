@@ -7,34 +7,20 @@ import { Button } from '../../ui/button';
 import { Play, Save, Copy, Download, CheckCircle, BookOpen } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
+const API_URL = import.meta.env.VITE_REACT_APP_BACKEND_URL || "https://virtualjudge.onrender.com";
+
 interface Exercise {
   id: string;
   title: string;
   description: string;
   starterCode: string;
   language: string;
+  language_id: number;
   testCases?: Array<{
     input: string;
     expectedOutput: string;
   }>;
 }
-
-// Judge0 language IDs: https://ce.judge0.com/languages
-const JUDGE0_LANGUAGES: Record<string, number> = {
-  javascript: 63,
-  python: 71,
-  java: 62,
-  c: 50,
-  cpp: 54,
-  csharp: 51,
-  php: 68,
-  go: 60,
-  ruby: 72,
-  swift: 83,
-  kotlin: 78,
-  typescript: 74,
-  rust: 73,
-};
 
 const SUPPORTED_LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' },
@@ -57,7 +43,8 @@ const DEFAULT_EXERCISE: Exercise = {
   title: 'Editor Vacío',
   description: 'Escribe tu código aquí o selecciona un ejercicio',
   starterCode: '// Escribe tu código aquí\n// Puedes cambiar el lenguaje arriba',
-  language: 'javascript'
+  language: 'javascript',
+  language_id: 63,
 };
 
 const CodeLab: React.FC = () => {
@@ -65,14 +52,16 @@ const CodeLab: React.FC = () => {
   const [language, setLanguage] = useState<string>(DEFAULT_EXERCISE.language);
   const [theme, setTheme] = useState<string>('vs-dark');
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [isGrading, setIsGrading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentExercise, setCurrentExercise] = useState<Exercise | null>(DEFAULT_EXERCISE);
+  const [currentExercise, setCurrentExercise] = useState<Exercise>(DEFAULT_EXERCISE);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [gradeResult, setGradeResult] = useState<{
     passed: boolean;
     message: string;
-    details?: any;
+    details?: {
+      passedTestCases: number;
+      testCases: number;
+    };
   } | null>(null);
   const [output, setOutput] = useState<string>('');
   const { toast } = useToast();
@@ -80,37 +69,13 @@ const CodeLab: React.FC = () => {
   useEffect(() => {
     const fetchExercises = async () => {
       try {
-        const demoExercises: Exercise[] = [
-          {
-            id: 'ex1',
-            title: 'Hola Mundo en JS',
-            description: 'Escribe un programa que imprima "Hola, mundo!"',
-            starterCode: '// Escribe tu código aquí\nconsole.log("Hola, mundo!");',
-            language: 'javascript',
-            testCases: [
-              {
-                input: '',
-                expectedOutput: 'Hola, mundo!'
-              }
-            ]
-          },
-          {
-            id: 'ex2',
-            title: 'Suma en Python',
-            description: 'Escribe una función que sume dos números',
-            starterCode: 'def sumar(a, b):\n    # Tu código aquí\n    pass',
-            language: 'python',
-            testCases: [
-              {
-                input: '1 2',
-                expectedOutput: '3'
-              }
-            ]
-          }
-        ];
-        setExercises([DEFAULT_EXERCISE, ...demoExercises]);
-      } catch (err) {
-        console.error('Error cargando ejercicios:', err);
+        const res = await fetch(`${API_URL}/exercises`);
+        if (!res.ok) throw new Error("No se pudieron cargar los ejercicios");
+        const data = await res.json();
+        setExercises([DEFAULT_EXERCISE, ...data]);
+      } catch {
+        console.error('Error cargando ejercicios');
+        setExercises([DEFAULT_EXERCISE]);
       }
     };
     fetchExercises();
@@ -131,7 +96,6 @@ const CodeLab: React.FC = () => {
     localStorage.setItem('savedCode', newCode);
   };
 
-  // Ejecutar código usando Judge0
   const handleRunCode = async () => {
     setOutput('');
     setError(null);
@@ -141,7 +105,7 @@ const CodeLab: React.FC = () => {
     }
     setIsRunning(true);
 
-    const languageId = JUDGE0_LANGUAGES[language];
+    const languageId = currentExercise?.language_id || DEFAULT_EXERCISE.language_id;
     if (!languageId) {
       setError('Lenguaje no soportado.');
       setIsRunning(false);
@@ -149,13 +113,13 @@ const CodeLab: React.FC = () => {
     }
 
     try {
-      const response = await fetch('https://ce.judge0.com/submissions?base64_encoded=false&wait=true', {
+      const response = await fetch(`${API_URL}/submissions?base64_encoded=false&wait=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           source_code: code,
           language_id: languageId,
-          stdin: '', // Puedes agregar entrada estándar si lo deseas
+          stdin: '',
         }),
       });
       const result = await response.json();
@@ -171,8 +135,8 @@ const CodeLab: React.FC = () => {
         description: "El código se ejecutó correctamente.",
         variant: "default",
       });
-    } catch (err: any) {
-      setError('Error al ejecutar el código: ' + err.message);
+    } catch {
+      setError('Error al ejecutar el código.');
       setOutput('');
     }
     setIsRunning(false);
@@ -262,7 +226,7 @@ const CodeLab: React.FC = () => {
               </div>
               <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">
                 <Editor
-                  language={language}
+                  languageId={currentExercise?.language_id || DEFAULT_EXERCISE.language_id}
                   onCodeChange={handleCodeChange}
                   code={code}
                   theme={theme}
