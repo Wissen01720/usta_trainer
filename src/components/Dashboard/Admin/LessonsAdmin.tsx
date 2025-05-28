@@ -1,31 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import MainLayout from '../../Layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-
-// Tipos para los prerrequisitos y lecciones
-interface Prerequisite {
-  type: 'lesson' | 'exercise';
-  id: string;
-}
-
-interface Lesson {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  difficulty_level?: string;
-  thumbnail_url?: string;
-  video_url?: string;
-  estimated_duration?: number;
-  prerequisites?: Prerequisite[];
-  author_id: string;
-  is_published: boolean;
-  published_at?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Plus, BookOpen, Video, Edit, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import LessonList, { Lesson } from './LessonList';
+import { Badge } from "../../ui/badge"; // Asegúrate de que este import existe
 
 const API_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -37,24 +17,35 @@ const initialForm = {
   thumbnail_url: '',
   video_url: '',
   estimated_duration: 0,
-  prerequisites: [] as Prerequisite[],
+  prerequisites: [] as { type: 'lesson' | 'exercise'; id: string }[],
   is_published: false
 };
 
+// Función para colores de dificultad (igual que en LessonList)
+const getDifficultyColor = (level?: string) => {
+  switch (level) {
+    case "beginner":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100";
+    case "intermediate":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100";
+    case "advanced":
+      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100";
+    default:
+      return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100";
+  }
+};
+
 const LessonsAdmin: React.FC = () => {
-  // Estados principales
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ ...initialForm });
-
-  // Estados para edición y detalles
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [editForm, setEditForm] = useState<typeof form>(initialForm);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [search, setSearch] = useState('');
 
   // Cargar lecciones desde la API
   const fetchLessons = useCallback(() => {
@@ -83,9 +74,15 @@ const LessonsAdmin: React.FC = () => {
     fetchLessons();
   }, [fetchLessons, showModal, selectedLesson]);
 
-  // Crear nueva lección
+  // Mostrar detalles de una lección
+  const handleShowDetails = (lesson: Lesson) => {
+    setSelectedLesson(lesson);
+  };
+
+  // Crear una nueva lección
   const handleCreate = async () => {
     setCreating(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/api/v1/lessons/`, {
         method: 'POST',
@@ -95,437 +92,416 @@ const LessonsAdmin: React.FC = () => {
         },
         body: JSON.stringify(form)
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.detail || 'Error al crear la lección');
-        setCreating(false);
-        return;
-      }
+      if (!res.ok) throw new Error('Error al crear la lección');
       setShowModal(false);
       setForm({ ...initialForm });
-    } catch {
-      alert('Error al crear la lección');
+      fetchLessons();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Error al crear la lección');
+      } else {
+        setError('Error al crear la lección');
+      }
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
-  // Mostrar detalles y preparar edición
-  const handleShowDetails = (lesson: Lesson) => {
-    setSelectedLesson(lesson);
-    setEditForm({
-      title: lesson.title,
-      slug: lesson.slug,
-      content: lesson.content,
-      difficulty_level: lesson.difficulty_level || 'beginner',
-      thumbnail_url: lesson.thumbnail_url || '',
-      video_url: lesson.video_url || '',
-      estimated_duration: lesson.estimated_duration || 0,
-      prerequisites: lesson.prerequisites || [],
-      is_published: lesson.is_published
-    });
-  };
-
-  // Guardar cambios de edición
+  // Editar lección
   const handleEdit = async () => {
     if (!selectedLesson) return;
     setEditing(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/lessons/${selectedLesson.id}`, {
+      const res = await fetch(`${API_URL}/api/v1/lessons/${selectedLesson.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
         },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(selectedLesson)
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.detail || 'Error al editar la lección');
-        setEditing(false);
-        return;
-      }
+      if (!res.ok) throw new Error('Error al editar la lección');
       setSelectedLesson(null);
-    } catch {
-      alert('Error al editar la lección');
+      fetchLessons();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Error al editar la lección');
+      } else {
+        setError('Error al editar la lección');
+      }
+    } finally {
+      setEditing(false);
     }
-    setEditing(false);
   };
 
   // Eliminar lección
   const handleDelete = async () => {
     if (!selectedLesson) return;
-    if (!window.confirm('¿Seguro que deseas eliminar esta lección?')) return;
     setDeleting(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/lessons/${selectedLesson.id}`, {
+      const res = await fetch(`${API_URL}/api/v1/lessons/${selectedLesson.id}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
         }
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.detail || 'Error al eliminar la lección');
-        setDeleting(false);
-        return;
-      }
+      if (!res.ok) throw new Error('Error al eliminar la lección');
       setSelectedLesson(null);
-    } catch {
-      alert('Error al eliminar la lección');
+      fetchLessons();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Error al eliminar la lección');
+      } else {
+        setError('Error al eliminar la lección');
+      }
+    } finally {
+      setDeleting(false);
     }
-    setDeleting(false);
   };
 
-  // Prerrequisitos para crear
-  const handleAddPrerequisite = () => {
-    setForm(f => ({
-      ...f,
-      prerequisites: [...f.prerequisites, { type: 'lesson', id: '' }]
-    }));
-  };
-
-  const handlePrerequisiteChange = (idx: number, field: keyof Prerequisite, value: string) => {
-    setForm(f => ({
-      ...f,
-      prerequisites: f.prerequisites.map((p, i) =>
-        i === idx ? { ...p, [field]: value } : p
-      )
-    }));
-  };
-
-  const handleRemovePrerequisite = (idx: number) => {
-    setForm(f => ({
-      ...f,
-      prerequisites: f.prerequisites.filter((_, i) => i !== idx)
-    }));
-  };
-
-  // Prerrequisitos para editar
-  const handleEditPrerequisiteChange = (idx: number, field: keyof Prerequisite, value: string) => {
-    setEditForm(f => ({
-      ...f,
-      prerequisites: f.prerequisites.map((p, i) =>
-        i === idx ? { ...p, [field]: value } : p
-      )
-    }));
-  };
-
-  const handleEditAddPrerequisite = () => {
-    setEditForm(f => ({
-      ...f,
-      prerequisites: [...f.prerequisites, { type: 'lesson', id: '' }]
-    }));
-  };
-
-  const handleEditRemovePrerequisite = (idx: number) => {
-    setEditForm(f => ({
-      ...f,
-      prerequisites: f.prerequisites.filter((_, i) => i !== idx)
-    }));
-  };
+  // Filtrado y paginación (primeras 10 lecciones)
+  const filteredLessons = lessons.filter(l =>
+    l.title.toLowerCase().includes(search.toLowerCase()) ||
+    l.slug.toLowerCase().includes(search.toLowerCase())
+  );
+  const lessonsToShow = filteredLessons.slice(0, 10);
 
   return (
     <MainLayout role="admin">
       <div className="space-y-6">
         {/* Encabezado y botón para agregar */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Lecciones</h1>
-          <Button size="sm" variant="outline" onClick={() => setShowModal(true)}>
-            Agregar Lección
-          </Button>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Buscar lección..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="rounded border px-2 py-1 dark:bg-gray-700 dark:text-white"
+            />
+            <Button size="sm" onClick={() => setShowModal(true)} className="gap-1">
+              <Plus className="h-4 w-4" />
+              Agregar Lección
+            </Button>
+          </div>
         </div>
-        <Card>
+
+        <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Listado de Lecciones</CardTitle>
+            <CardTitle className="text-xl text-gray-900 dark:text-white">Listado de Lecciones</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Estado de carga, error o listado */}
             {loading ? (
-              <div className="p-8 text-center text-gray-900 dark:text-white">Cargando lecciones...</div>
-            ) : error ? (
-              <div className="text-red-500 dark:text-red-400">{error}</div>
-            ) : lessons.length === 0 ? (
-              <div className="text-gray-700 dark:text-gray-300">No hay lecciones registradas.</div>
-            ) : (
-              <div className="space-y-3">
-                {lessons.map(lesson => (
-                  <div key={lesson.id} className="flex items-center justify-between border-b pb-3 last:border-b-0 last:pb-0">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {lesson.title}
-                        <span className="text-xs text-gray-600 dark:text-gray-300 ml-2">
-                          ({lesson.slug})
-                        </span>
-                        <span className="text-xs text-gray-600 dark:text-gray-300 ml-2">
-                          Dificultad: {lesson.difficulty_level || 'N/A'}
-                        </span>
-                        {lesson.estimated_duration && (
-                          <span className="text-xs text-gray-600 dark:text-gray-300 ml-2">
-                            Duración: {lesson.estimated_duration} min
-                          </span>
-                        )}
-                      </p>
-                      <div className="flex items-center mt-1 flex-wrap gap-2">
-                        <Badge variant="outline" className={
-                          lesson.is_published
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
-                        }>
-                          {lesson.is_published ? 'Publicado' : 'Borrador'}
-                        </Badge>
-                        <span className="text-xs text-gray-600 dark:text-gray-300">
-                          Autor: {lesson.author_id}
-                        </span>
-                        <span className="text-xs text-gray-600 dark:text-gray-300">
-                          Creado: {lesson.created_at?.split('T')[0]}
-                        </span>
-                        {lesson.published_at && (
-                          <span className="text-xs text-gray-600 dark:text-gray-300">
-                            Publicado: {lesson.published_at?.split('T')[0]}
-                          </span>
-                        )}
-                        {lesson.video_url && (
-                          <a
-                            href={lesson.video_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 dark:text-blue-400 underline ml-2"
-                          >
-                            Video
-                          </a>
-                        )}
-                        {lesson.thumbnail_url && (
-                          <img
-                            src={lesson.thumbnail_url}
-                            alt="thumbnail"
-                            className="w-8 h-8 object-cover rounded ml-2"
-                          />
-                        )}
-                      </div>
-                      {/* Prerrequisitos */}
-                      {Array.isArray(lesson.prerequisites) && lesson.prerequisites?.length > 0 && (
-                        <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                          Prerrequisitos: {lesson.prerequisites!.map((p, idx) =>
-                            <span key={idx}>{p.type}: {p.id}{idx < lesson.prerequisites!.length - 1 ? ', ' : ''}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => handleShowDetails(lesson)}>
-                      Detalles
-                    </Button>
-                  </div>
-                ))}
+              <div className="p-8 text-center text-gray-900 dark:text-white">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                <p>Cargando lecciones...</p>
               </div>
+            ) : error ? (
+              <div className="text-red-500 dark:text-red-400 p-4 rounded-lg bg-red-50 dark:bg-red-900/20">
+                {error}
+              </div>
+            ) : lessonsToShow.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center p-8 text-gray-700 dark:text-gray-300"
+              >
+                <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-lg font-medium">No hay lecciones registradas</p>
+                <p className="text-sm mt-1">Comienza agregando tu primera lección</p>
+                <Button className="mt-4 gap-1" size="sm" onClick={() => setShowModal(true)}>
+                  <Plus className="h-4 w-4" />
+                  Agregar Lección
+                </Button>
+              </motion.div>
+            ) : (
+              <LessonList
+                lessons={lessonsToShow}
+                onShowDetails={handleShowDetails}
+                onDelete={lesson => {
+                  setSelectedLesson(lesson);
+                  if (window.confirm('¿Seguro que deseas eliminar esta lección?')) {
+                    handleDelete();
+                  }
+                }}
+              />
             )}
           </CardContent>
         </Card>
 
         {/* Modal para crear lección */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg text-gray-900 dark:text-white">
-              <h2 className="text-lg font-bold mb-4">Agregar Lección</h2>
-              <div className="space-y-2">
-                {/* Campos del formulario de creación */}
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Título"
-                />
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={form.slug}
-                  onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
-                  placeholder="Slug (único)"
-                />
-                <textarea
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={form.content}
-                  onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                  placeholder="Contenido"
-                  rows={3}
-                />
-                <select
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={form.difficulty_level}
-                  onChange={e => setForm(f => ({ ...f, difficulty_level: e.target.value }))}
-                >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={form.thumbnail_url}
-                  onChange={e => setForm(f => ({ ...f, thumbnail_url: e.target.value }))}
-                  placeholder="URL de la miniatura"
-                />
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={form.video_url}
-                  onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
-                  placeholder="URL del video"
-                />
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  type="number"
-                  value={form.estimated_duration}
-                  onChange={e => setForm(f => ({ ...f, estimated_duration: Number(e.target.value) }))}
-                  placeholder="Duración estimada (min)"
-                  min={0}
-                />
-                {/* Prerrequisitos */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg"
+            >
+              <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Agregar Lección</h2>
+              {/* Formulario de creación */}
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleCreate();
+                }}
+                className="space-y-4"
+              >
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold text-sm">Prerrequisitos</span>
-                    <Button size="sm" onClick={handleAddPrerequisite} type="button">Agregar</Button>
-                  </div>
-                  {form.prerequisites.map((p, idx) => (
-                    <div key={idx} className="flex gap-2 mb-1">
-                      <select
-                        value={p.type}
-                        onChange={e => handlePrerequisiteChange(idx, 'type', e.target.value)}
-                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="lesson">Lección</option>
-                        <option value="exercise">Ejercicio</option>
-                      </select>
-                      <input
-                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                        value={p.id}
-                        onChange={e => handlePrerequisiteChange(idx, 'id', e.target.value)}
-                        placeholder="ID"
-                      />
-                      <Button size="sm" variant="destructive" onClick={() => handleRemovePrerequisite(idx)} type="button">Quitar</Button>
-                    </div>
-                  ))}
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Título</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.title}
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    required
+                  />
                 </div>
-                <label className="flex items-center gap-2 text-gray-900 dark:text-white">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Slug</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.slug}
+                    onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Contenido</label>
+                  <textarea
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.content}
+                    onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Nivel de dificultad</label>
+                  <select
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.difficulty_level}
+                    onChange={e => setForm(f => ({ ...f, difficulty_level: e.target.value }))}
+                  >
+                    <option value="beginner">Principiante</option>
+                    <option value="intermediate">Intermedio</option>
+                    <option value="advanced">Avanzado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">URL de miniatura</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.thumbnail_url}
+                    onChange={e => setForm(f => ({ ...f, thumbnail_url: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">URL de video</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.video_url}
+                    onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Duración estimada (minutos)</label>
+                  <input
+                    type="number"
+                    className="mt-1 block w-full rounded border-gray-300 dark:bg-gray-700 dark:text-white"
+                    value={form.estimated_duration}
+                    onChange={e => setForm(f => ({ ...f, estimated_duration: Number(e.target.value) }))}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
+                    id="is_published"
                     checked={form.is_published}
                     onChange={e => setForm(f => ({ ...f, is_published: e.target.checked }))}
-                    className="text-gray-900 dark:text-white"
                   />
-                  Publicar
-                </label>
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button size="sm" variant="outline" onClick={() => setShowModal(false)} disabled={creating}>Cancelar</Button>
-                <Button size="sm" onClick={handleCreate} disabled={creating}>
-                  {creating ? "Creando..." : "Crear"}
-                </Button>
-              </div>
-            </div>
-          </div>
+                  <label htmlFor="is_published" className="text-sm text-gray-700 dark:text-gray-200">¿Publicar?</label>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowModal(false)}
+                    disabled={creating}
+                    type="button"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="submit"
+                    disabled={creating}
+                    className="gap-1"
+                  >
+                    {creating ? (
+                      <>
+                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></span>
+                        Creando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Crear
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* Modal de detalles/edición */}
         {selectedLesson && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg text-gray-900 dark:text-white">
-              <h2 className="text-lg font-bold mb-4">Detalle y Edición de Lección</h2>
-              <div className="space-y-2">
-                {/* Campos del formulario de edición */}
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={editForm.title}
-                  onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Título"
-                />
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={editForm.slug}
-                  onChange={e => setEditForm(f => ({ ...f, slug: e.target.value }))}
-                  placeholder="Slug (único)"
-                />
-                <textarea
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={editForm.content}
-                  onChange={e => setEditForm(f => ({ ...f, content: e.target.value }))}
-                  placeholder="Contenido"
-                  rows={3}
-                />
-                <select
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={editForm.difficulty_level}
-                  onChange={e => setEditForm(f => ({ ...f, difficulty_level: e.target.value }))}
-                >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={editForm.thumbnail_url}
-                  onChange={e => setEditForm(f => ({ ...f, thumbnail_url: e.target.value }))}
-                  placeholder="URL de la miniatura"
-                />
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  value={editForm.video_url}
-                  onChange={e => setEditForm(f => ({ ...f, video_url: e.target.value }))}
-                  placeholder="URL del video"
-                />
-                <input
-                  className="w-full border rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                  type="number"
-                  value={editForm.estimated_duration}
-                  onChange={e => setEditForm(f => ({ ...f, estimated_duration: Number(e.target.value) }))}
-                  placeholder="Duración estimada (min)"
-                  min={0}
-                />
-                {/* Prerrequisitos edición */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold text-sm">Prerrequisitos</span>
-                    <Button size="sm" onClick={handleEditAddPrerequisite} type="button">Agregar</Button>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            >
+              <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">
+                {selectedLesson.title}
+              </h2>
+
+              <div className="space-y-4">
+                {/* Sección de información */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Dificultad</h3>
+                    <Badge className={`mt-1 ${selectedLesson.difficulty_level ? getDifficultyColor(selectedLesson.difficulty_level) : ''}`}>
+                      {selectedLesson.difficulty_level || 'N/A'}
+                    </Badge>
                   </div>
-                  {editForm.prerequisites.map((p, idx) => (
-                    <div key={idx} className="flex gap-2 mb-1">
-                      <select
-                        value={p.type}
-                        onChange={e => handleEditPrerequisiteChange(idx, 'type', e.target.value)}
-                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="lesson">Lección</option>
-                        <option value="exercise">Ejercicio</option>
-                      </select>
-                      <input
-                        className="border rounded px-1 py-0.5 bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
-                        value={p.id}
-                        onChange={e => handleEditPrerequisiteChange(idx, 'id', e.target.value)}
-                        placeholder="ID"
-                      />
-                      <Button size="sm" variant="destructive" onClick={() => handleEditRemovePrerequisite(idx)} type="button">Quitar</Button>
-                    </div>
-                  ))}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Duración</h3>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                      {selectedLesson.estimated_duration ? `${selectedLesson.estimated_duration} minutos` : 'No especificada'}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Estado</h3>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                      {selectedLesson.is_published ? (
+                        <span className="text-green-600 dark:text-green-400">Publicado</span>
+                      ) : (
+                        <span className="text-yellow-600 dark:text-yellow-400">Borrador</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha creación</h3>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                      {new Date(selectedLesson.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <label className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <input
-                    type="checkbox"
-                    checked={editForm.is_published}
-                    onChange={e => setEditForm(f => ({ ...f, is_published: e.target.checked }))}
-                    className="text-gray-900 dark:text-white"
-                  />
-                  Publicar
-                </label>
+
+                {/* Contenido */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Contenido</h3>
+                  <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-700 rounded text-sm text-gray-800 dark:text-gray-200">
+                    {selectedLesson.content || 'No hay contenido'}
+                  </div>
+                </div>
+
+                {/* Video */}
+                {selectedLesson.video_url && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Video</h3>
+                    <a
+                      href={selectedLesson.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <Video className="h-4 w-4 mr-1" />
+                      Ver video
+                    </a>
+                  </div>
+                )}
+
+                {/* Prerrequisitos */}
+                {selectedLesson.prerequisites && selectedLesson.prerequisites.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Prerrequisitos</h3>
+                    <div className="mt-1 space-y-1">
+                      {selectedLesson.prerequisites.map((p, idx) => (
+                        <div key={idx} className="text-sm text-gray-900 dark:text-white">
+                          <span className="capitalize">{p.type}</span>: {p.id}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between gap-2 mt-4">
-                <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleting}>
-                  {deleting ? "Eliminando..." : "Eliminar"}
+
+              <div className="flex justify-between gap-2 mt-6">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="gap-1"
+                >
+                  {deleting ? (
+                    <>
+                      <span className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></span>
+                      Eliminando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar
+                    </>
+                  )}
                 </Button>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedLesson(null)} disabled={editing || deleting}>Cerrar</Button>
-                  <Button size="sm" onClick={handleEdit} disabled={editing || deleting}>
-                    {editing ? "Guardando..." : "Guardar Cambios"}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedLesson(null)}
+                  >
+                    Cerrar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleEdit}
+                    disabled={editing}
+                    className="gap-1"
+                  >
+                    {editing ? (
+                      <>
+                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></span>
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="h-4 w-4" />
+                        Guardar cambios
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
       </div>
     </MainLayout>

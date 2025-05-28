@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/useAuth";
 
-// Normaliza el rol para que siempre sea uno válido para MainLayout
+// Normaliza el rol del usuario
 const normalizeRole = (
   role: string | undefined
 ): "student" | "teacher" | "admin" | undefined => {
@@ -27,9 +27,10 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        // Si no hay usuario autenticado, redirige al login
+        // Redirige al login si no hay usuario
         navigate('/login');
       } else {
+        // Muestra mensaje de bienvenida
         toast({
           title: `Bienvenido al panel de ${user.role}`,
           description: "Has iniciado sesión correctamente",
@@ -39,6 +40,7 @@ const Dashboard: React.FC = () => {
     }
   }, [user, loading, navigate, toast]);
 
+  // Renderiza el dashboard según el rol
   const renderDashboard = () => {
     switch (normalizeRole(user?.role)) {
       case 'student':
