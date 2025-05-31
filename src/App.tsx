@@ -7,7 +7,6 @@ import Home from "./pages/Home";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 // Estudiantes
-import LessonsStudents from "./components/Dashboard/Students/LessonsStudents";
 import SettingsStudents from "./components/Dashboard/Students/SettingsStudents";
 import CodeLabStudents from "./components/Dashboard/Students/CodelabStudents";
 import StudentDashboard from "./components/Dashboard/Students/StudentDashboard";
@@ -23,7 +22,7 @@ import ExercisesAdmin from "./components/Dashboard/Admin/ExercisesAdmin";
 import AchievementsAdmin from "./components/Dashboard/Admin/AchievementsAdmin";
 // Teacher
 import TeacherDashboard from "./components/Dashboard/Teachers/TeacherDashboard";
-import SubmissionsTeacher from "./components/Dashboard/Teachers/SubmissionsTeacher";
+import ExercisesTeacher from "./components/Dashboard/Teachers/ExercisesTeacher";
 import SettingsTeacher from "./components/Dashboard/Teachers/SettingsTeacher";
 // Monaco editor styles
 import 'monaco-editor/esm/vs/editor/editor.all.js';
@@ -42,7 +41,6 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           {/* Estudiantes */}
           <Route path="/codelab" element={<CodeLabStudents />} />
-          <Route path="/lessons" element={<LessonsStudents />} />
           <Route path="/settings" element={<SettingsStudents />} />
           <Route path="/student-dashboard" element={<StudentDashboard />} />
           {/* Auth */}
@@ -57,7 +55,7 @@ const App = () => (
           <Route path="/admin/achievements" element={<AchievementsAdmin />} />
           {/* Teacher */}
           <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-          <Route path="/teacher/submissions" element={<SubmissionsTeacher />} />
+          <Route path="/teacher/exercises" element={<ExercisesTeacher />} />
           <Route path="/teacher/settings" element={<SettingsTeacher />} />
 
         </Routes>
