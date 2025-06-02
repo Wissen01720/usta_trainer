@@ -309,7 +309,7 @@ const CodeLab = () => {
                     placeholder="Buscar ejercicios mágicos..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-4 h-12 border-2 border-purple-200 focus:border-purple-400 rounded-xl shadow-lg w-full"
+                    className="pl-4 h-12 border-2 border-purple-200 focus:border-purple-400 rounded-xl shadow-lg w-full text-black"
                   />
                 </div>
                 <Button
@@ -533,7 +533,7 @@ const CodeLab = () => {
                             <div className="w-3 h-3 rounded-full bg-green-500"></div>
                             Ejemplo de Entrada:
                           </h5>
-                          <div className="bg-white p-4 rounded-xl font-mono text-sm shadow-lg border-l-4 border-green-500">
+                          <div className="bg-gray-600 p-4 rounded-xl font-mono text-sm shadow-lg border-l-4 border-green-500">
                             {currentExercise.input_example}
                           </div>
                         </motion.div>
@@ -542,7 +542,7 @@ const CodeLab = () => {
                             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                             Ejemplo de Salida:
                           </h5>
-                          <div className="bg-white p-4 rounded-xl font-mono text-sm shadow-lg border-l-4 border-blue-500">
+                          <div className="bg-gray-600 p-4 rounded-xl font-mono text-sm shadow-lg border-l-4 border-blue-500">
                             {currentExercise.output_example}
                           </div>
                         </motion.div>
@@ -580,13 +580,13 @@ const CodeLab = () => {
                                 <div className="grid grid-cols-2 gap-3 text-xs">
                                   <div>
                                     <span className="font-semibold text-green-600">Entrada:</span>
-                                    <div className="font-mono bg-green-50 p-2 rounded mt-1">
+                                    <div className="font-mono bg-slate-500 p-2 rounded mt-1">
                                       {testCase.input_data}
                                     </div>
                                   </div>
                                   <div>
                                     <span className="font-semibold text-blue-600">Salida esperada:</span>
-                                    <div className="font-mono bg-blue-50 p-2 rounded mt-1">
+                                    <div className="font-mono bg-neutral-700 p-2 rounded mt-1">
                                       {testCase.expected_output}
                                     </div>
                                   </div>

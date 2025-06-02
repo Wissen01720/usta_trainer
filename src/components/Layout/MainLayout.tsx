@@ -98,7 +98,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, role = 'student' }) =
       : [
           { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
           { name: "Code Lab", path: "/codelab", icon: <Code className="h-5 w-5" /> },
-          { name: "Lecciones", path: "/lessons", icon: <BookOpen className="h-5 w-5" /> },
           { name: "Ajustes", path: "/settings", icon: <Settings className="h-5 w-5" /> }
         ];
   const roleColor = {
