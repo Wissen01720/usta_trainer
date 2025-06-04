@@ -1,90 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Play, Save, Copy, Download, CheckCircle, XCircle, AlertCircle, ArrowLeft, Sparkles, Code, Terminal, FileText } from 'lucide-react';
+import { Play, Save, Copy, Download, ArrowLeft, Sparkles, Code, Terminal } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MainLayout from '@/components/Layout/MainLayout';
-
-const API_URL = "https://virtualjudge.onrender.com";
-
-interface Exercise {
-  id: number;
-  title: string;
-  description: string;
-  input_example: string;
-  output_example: string;
-  test_cases?: Array<{
-    input_data: string;
-    expected_output: string;
-  }>;
-}
-
-interface SubmissionResult {
-  passed: boolean;
-  result: string;
-  details: Array<{
-    input: string;
-    expected: string;
-    actual: string;
-    verdict: string;
-  }>;
-  message: string;
-}
-
-interface CodeEditorProps {
-  code: string;
-  onChange: (code: string) => void;
-  language: string;
-  theme: string;
-}
-
-const SUPPORTED_LANGUAGES = [
-  { value: 'python', label: 'Python', color: 'from-blue-500 to-cyan-500' },
-  { value: 'javascript', label: 'JavaScript', color: 'from-yellow-500 to-orange-500' },
-  { value: 'java', label: 'Java', color: 'from-red-500 to-pink-500' },
-  { value: 'c', label: 'C', color: 'from-gray-500 to-slate-500' },
-  { value: 'cpp', label: 'C++', color: 'from-purple-500 to-indigo-500' },
-];
-
-// Componente Editor de Código con mejor diseño
-const CodeEditor = ({ code, onChange }: CodeEditorProps) => {
-  const [localCode, setLocalCode] = useState(code);
-
-  useEffect(() => {
-    setLocalCode(code);
-  }, [code]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newCode = e.target.value;
-    setLocalCode(newCode);
-    onChange(newCode);
-  };
-
-  return (
-    <div className="h-full w-full relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 opacity-95"></div>
-      <textarea
-        value={localCode}
-        onChange={handleChange}
-        className="relative z-10 w-full h-full resize-none font-mono text-sm p-6 bg-transparent text-emerald-400 placeholder-slate-500 border-0 outline-none selection:bg-emerald-400/20"
-        placeholder="# ¡Escribe tu código aquí y crea algo increíble! ✨"
-        spellCheck={false}
-        style={{
-          tabSize: 2,
-          lineHeight: '1.6',
-          textShadow: '0 0 10px rgba(16, 185, 129, 0.3)'
-        }}
-      />
-      <div className="absolute top-4 right-4 z-20">
-        <div className="flex gap-1">
-          <div className="w-3 h-3 rounded-full bg-red-500/70"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500/70"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500/70"></div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { SUPPORTED_LANGUAGES, API_URL } from './Constants';
+import { Exercise, SubmissionResult } from './types';
+import CodeEditor from './CodeEditor';
+import ExerciseDescription from './ExerciseDescription';
+import ResultPanel from './ResultPanel';
 
 const CodeLab = () => {
   const [code, setCode] = useState('# ¡Bienvenido a CodeLab! 🚀\n# Escribe tu código aquí\n\ndef resolver_problema():\n    # Tu solución aquí\n    pass\n\nresolver_problema()\n');
@@ -398,7 +322,7 @@ const CodeLab = () => {
   return (
     <MainLayout>
       <div className="h-screen flex flex-col">
-        {/* Header mejorado */}
+        {/* Header */}
         <motion.div 
           className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-purple-100 p-4"
           initial={{ opacity: 0, y: -20 }}
@@ -508,251 +432,16 @@ const CodeLab = () => {
           >
             {/* Descripción del ejercicio */}
             <div className="h-1/2 border-b-4 border-green-200">
-              <div className="h-full flex flex-col">
-                <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5" />
-                    <h3 className="font-bold">Descripción del Problema</h3>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto p-6 bg-gradient-to-br from-green-50 to-emerald-50">
-                  {currentExercise ? (
-                    <motion.div 
-                      className="space-y-6"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <div>
-                        <h4 className="text-xl font-bold text-gray-800 mb-3">{currentExercise.title}</h4>
-                        <p className="text-gray-700 leading-relaxed">{currentExercise.description}</p>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <motion.div whileHover={{ scale: 1.02 }}>
-                          <h5 className="font-bold mb-2 text-green-700 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            Ejemplo de Entrada:
-                          </h5>
-                          <div className="bg-gray-600 p-4 rounded-xl font-mono text-sm shadow-lg border-l-4 border-green-500">
-                            {currentExercise.input_example}
-                          </div>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.02 }}>
-                          <h5 className="font-bold mb-2 text-blue-700 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                            Ejemplo de Salida:
-                          </h5>
-                          <div className="bg-gray-600 p-4 rounded-xl font-mono text-sm shadow-lg border-l-4 border-blue-500">
-                            {currentExercise.output_example}
-                          </div>
-                        </motion.div>
-                      </div>
-
-                      <motion.div 
-                        className="p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl border border-blue-200"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <p className="text-sm text-blue-800 flex items-start gap-2">
-                          <Sparkles className="w-4 h-4 mt-0.5 text-blue-600" />
-                          ¡Desarrolla tu solución con confianza! Tu código será evaluado automáticamente.
-                        </p>
-                      </motion.div>
-
-                      {/* Mostrar casos de prueba adicionales si existen */}
-                      {currentExercise.test_cases && currentExercise.test_cases.length > 0 && (
-                        <motion.div 
-                          className="space-y-3"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
-                        >
-                          <h5 className="font-bold text-purple-700 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                            Casos de Prueba Adicionales:
-                          </h5>
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {currentExercise.test_cases.slice(0, 3).map((testCase, index) => (
-                              <motion.div 
-                                key={index}
-                                className="bg-white p-3 rounded-lg shadow-md border-l-4 border-purple-500"
-                                whileHover={{ scale: 1.01 }}
-                              >
-                                <div className="grid grid-cols-2 gap-3 text-xs">
-                                  <div>
-                                    <span className="font-semibold text-green-600">Entrada:</span>
-                                    <div className="font-mono bg-slate-500 p-2 rounded mt-1">
-                                      {testCase.input_data}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="font-semibold text-blue-600">Salida esperada:</span>
-                                    <div className="font-mono bg-neutral-700 p-2 rounded mt-1">
-                                      {testCase.expected_output}
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <motion.div 
-                      className="text-center py-12"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-r from-purple-200 to-pink-200 flex items-center justify-center">
-                        <Code className="h-10 w-10 text-purple-600" />
-                      </div>
-                      <h4 className="text-xl font-bold text-gray-700 mb-3">🎯 Editor Libre</h4>
-                      <p className="text-gray-600 mb-6">
-                        ¡Experimenta y crea código increíble sin restricciones!
-                      </p>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span>Múltiples lenguajes de programación</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span>Ejecución en tiempo real</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span>Descarga y comparte tu código</span>
-                        </div>
-                      </div>
-                      
-                      <motion.div 
-                        className="mt-8 p-4 bg-gradient-to-r from-green-100 to-blue-100 rounded-xl border border-green-200"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <p className="text-sm text-green-800 flex items-center justify-center gap-2">
-                          <Sparkles className="w-4 h-4 text-green-600" />
-                          <span>¡Selecciona un ejercicio o empieza a programar directamente!</span>
-                        </p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
+              <ExerciseDescription currentExercise={currentExercise} />
             </div>
 
             {/* Panel de resultados */}
             <div className="h-1/2">
-              <div className="h-full flex flex-col">
-                <div className="p-4 bg-gradient-to-r from-orange-500 to-red-500 text-white">
-                  <div className="flex items-center gap-3">
-                    <Terminal className="w-5 h-5" />
-                    <h3 className="font-bold">Resultados y Salida</h3>
-                    {submissionResult && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                      >
-                        {submissionResult.passed ? (
-                          <CheckCircle className="w-5 h-5 text-green-300" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-red-300" />
-                        )}
-                      </motion.div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto p-6 bg-gradient-to-br from-orange-50 to-red-50">
-                  {error && (
-                    <motion.div 
-                      className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl flex items-start gap-3 shadow-lg"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                    >
-                      <AlertCircle className="h-5 w-5 mt-0.5 text-red-500" />
-                      <div>
-                        <h4 className="font-bold">❌ Error</h4>
-                        <p className="text-sm">{error}</p>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {submissionResult && (
-                    <motion.div 
-                      className={`mb-4 p-4 rounded-xl shadow-lg border-l-4 ${
-                        submissionResult.passed 
-                          ? 'bg-green-100 border-green-500 text-green-700' 
-                          : 'bg-yellow-100 border-yellow-500 text-yellow-700'
-                      }`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <div className="flex items-start gap-3">
-                        {submissionResult.passed ? (
-                          <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
-                        ) : (
-                          <XCircle className="h-6 w-6 text-yellow-600 mt-0.5" />
-                        )}
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg">{submissionResult.message}</h4>
-                          {submissionResult.result && (
-                            <p className="text-sm mt-1">
-                              <span className="font-semibold">Estado:</span> {submissionResult.result}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {output && (
-                    <motion.div 
-                      className="bg-white p-4 rounded-xl shadow-lg border border-gray-200"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <h4 className="font-bold mb-3 text-gray-800 flex items-center gap-2">
-                        <Terminal className="w-4" />
-                        Salida del Programa:
-                      </h4>
-                      <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700 bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 border">
-                        {output}
-                      </pre>
-                    </motion.div>
-                  )}
-
-                  {!output && !error && !submissionResult && (
-                    <motion.div 
-                      className="text-center py-12"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-orange-200 to-red-200 flex items-center justify-center">
-                        <Terminal className="h-8 w-8 text-orange-600" />
-                      </div>
-                      <h4 className="text-lg font-bold text-gray-700 mb-2">✨ Listo para ejecutar</h4>
-                      <p className="text-gray-600 mb-4">
-                        Haz clic en "🚀 Ejecutar" para ver los resultados de tu código
-                      </p>
-                      <div className="flex justify-center">
-                        <motion.div
-                          animate={{ 
-                            boxShadow: [
-                              "0 0 0 0 rgba(249, 115, 22, 0.4)",
-                              "0 0 0 10px rgba(249, 115, 22, 0)",
-                              "0 0 0 0 rgba(249, 115, 22, 0)"
-                            ]
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full text-sm font-medium"
-                        >
-                          ¡Tu código aquí! 💫
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
+              <ResultPanel 
+                error={error}
+                output={output}
+                submissionResult={submissionResult}
+              />
             </div>
           </motion.div>
         </div>

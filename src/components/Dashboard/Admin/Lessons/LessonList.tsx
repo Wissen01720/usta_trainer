@@ -1,6 +1,6 @@
 import React from "react";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
+import { Badge } from "../../../ui/badge";
+import { Button } from "../../../ui/button";
 import { Clock, Edit, Trash2, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 

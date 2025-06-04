@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import MainLayout from '../components/Layout/MainLayout';
-import StudentDashboard from '../components/Dashboard/Students/StudentDashboard';
-import TeacherDashboard from '../components/Dashboard/Teachers/TeacherDashboard';
+import StudentDashboard from '../components/Dashboard/Students/Lessons/StudentDashboard';
+import TeacherDashboard from '../components/Dashboard/Teachers/Lessons/TeacherDashboard';
 import AdminDashboard from '../components/Dashboard/Admin/AdminDashboard';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "../hooks/use-toast";

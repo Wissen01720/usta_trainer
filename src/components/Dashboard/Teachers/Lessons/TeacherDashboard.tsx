@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import MainLayout from '../../Layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
+import MainLayout from '../../../Layout/MainLayout';
+import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/card";
+import { Badge } from "../../../ui/badge";
+import { Button } from "../../../ui/button";
 import { Eye, Plus, Edit3, Trash2, Video, Clock, Users, BookOpen, X, ChevronDown } from 'lucide-react';
-import { useToast } from "../../ui/use-toast";
+import { useToast } from "../../../ui/use-toast";
 
 interface Prerequisite {
   type: 'lesson' | 'exercise';

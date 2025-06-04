@@ -7,9 +7,9 @@ import Home from "./pages/Home";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 // Estudiantes
-import SettingsStudents from "./components/Dashboard/Students/SettingsStudents";
-import CodeLabStudents from "./components/Dashboard/Students/CodelabStudents";
-import StudentDashboard from "./components/Dashboard/Students/StudentDashboard";
+import SettingsStudents from "./components/Dashboard/Students/Settings/SettingsStudents";
+import CodeLabStudents from "./components/Dashboard/Students/Codelab/CodelabStudents";
+import StudentDashboard from "./components/Dashboard/Students/Lessons/StudentDashboard";
 // Auth
 import LoginForm from "./components/Auth/LoginForm";
 import ForgotPasswordForm from "./components/Auth/ForgotPasswordForm";
@@ -17,13 +17,13 @@ import RegisterForm from "./components/Auth/RegisterForm";
 // Admin
 import AdminDashboard from "./components/Dashboard/Admin/AdminDashboard";
 import UsersAdmin from "./components/Dashboard/Admin/UsersAdmin";
-import LessonsAdmin from "./components/Dashboard/Admin/LessonsAdmin";
-import ExercisesAdmin from "./components/Dashboard/Admin/ExercisesAdmin";
+import LessonsAdmin from "./components/Dashboard/Admin/Lessons/LessonsAdmin";
+import ExercisesAdmin from "./components/Dashboard/Admin/Exercises/ExercisesAdmin";
 import AchievementsAdmin from "./components/Dashboard/Admin/AchievementsAdmin";
 // Teacher
-import TeacherDashboard from "./components/Dashboard/Teachers/TeacherDashboard";
-import ExercisesTeacher from "./components/Dashboard/Teachers/ExercisesTeacher";
-import SettingsTeacher from "./components/Dashboard/Teachers/SettingsTeacher";
+import TeacherDashboard from "./components/Dashboard/Teachers/Lessons/TeacherDashboard";
+import ExercisesTeacher from "./components/Dashboard/Teachers/Exercises/ExercisesTeacher";
+import SettingsTeacher from "./components/Dashboard/Teachers/Settings/SettingsTeacher";
 // Monaco editor styles
 import 'monaco-editor/esm/vs/editor/editor.all.js';
 
